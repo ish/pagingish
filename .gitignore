@@ -1,0 +1,12 @@
+build
+dist
+docs/doctrees
+*.pyc
+*.log
+.coverage
+export.sh
+*figleaf_sections
+*.html.py
+*.swp
+*.swo
+*.noseids

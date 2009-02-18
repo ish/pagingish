@@ -1,0 +1,21 @@
+  <n:invisible n:pattern="paged">
+    <div class="productRow">
+      <n:invisible n:data="items" n:render="paging 16,4">
+        <n:invisible n:pattern="item" n:render="fragment item" />
+        <n:invisible n:pattern="seperator">
+          <hr />
+        </n:invisible>
+      </n:invisible>
+    </div>
+
+    <n:invisible n:render="paging_controls_or_message">
+      <n:invisible n:pattern="hasData" n:render="fragment paging_controls" />
+      <n:invisible n:pattern="noData">
+       <p>Sorry, there are no products in that category.</p>
+      </n:invisible>
+    </n:invisible>
+
+  </n:invisible>
+
+
+

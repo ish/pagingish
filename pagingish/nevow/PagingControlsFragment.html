@@ -1,0 +1,13 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<div xmlns:n="http://nevow.com/ns/nevow/0.1" id="paging" n:render="paging">
+  <div id="paging-numresults">[<n:slot name="count" />]</div>
+  <div id="paging-ranges" n:render="ranges">
+    <n:invisible n:pattern="range-notcurrent"><span class="range" ><a href="#"><n:attr name="href"><n:slot name="rangeurl" /></n:attr><n:slot name="rangestring" /></a></span></n:invisible>
+    <n:invisible n:pattern="range-current"><span class="range"><n:slot name="rangestring" /></span></n:invisible>
+  </div>
+  <div id="paging-next"><n:slot name="next"><a href="#" n:pattern="next">next</a></n:slot></div>
+  <div id="paging-prev"><n:slot name="previous"><a href="#" n:pattern="previous">prev</a></n:slot></div>
+</div>
+
