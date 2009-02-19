@@ -1,43 +1,20 @@
 
-#paging-header {
-  position: absolute;
-  top: 0px;
-  right: 335px;
-}
-
-#paging-header #paging{
-border-bottom:1px solid #CCCCCC;
-border-top:1px solid #CCCCCC;
-height:1.2em;
-margin:0 0 0 0;
-padding:5px;
-text-align:left;
-position: absolute;
-top:0px;
-right:0;
-width:485px;
-font-size: 90%;
-font-family: arial, verdana, helvetica, sans-serif;
-color: #CCC;
-}
-
 #paging a {
   color: #999;
 }
 
-#paging-footer #paging {
-border-bottom:1px solid #CCCCCC;
-border-top:1px solid #CCCCCC;
+#paging {
+border-bottom:1px solid #AAA;
+border-top:1px solid #AAA;
 height:1.2em;
-margin:0 0 0 0;
+margin:0 0 1em 0;
 padding:5px;
-margin-left: 144px;
 text-align:left;
-width:485px;
-font-size: 90%;
-font-family: arial, verdana, helvetica, sans-serif;
-color: #CCC;
+font-size: 100%;
+font-family: "Bitstream Vera Sans", arial, verdana, helvetica, sans-serif;
+color: #555;
 position: relative;
+width: 490px;
 }
 
 #paging #paging-numresults {
@@ -73,8 +50,8 @@ top:0.2em;
 font-size:120%;
 }
 #paging-range-center {
-border-left:1px solid #CCCCCC;
-border-right:1px solid #CCCCCC;
+border-left:1px solid #CCC;
+border-right:1px solid #CCC;
 font-weight:bold;
 font-size: 120%;
 margin-left:auto;
@@ -86,7 +63,7 @@ width:2.5em;
 #paging .range {
 margin:0pt 10px;
 }
-#content #paging a {
+#paging a, #paging a:link, #paging a:visited {
 color:#333333;
 display: inline;
 }

@@ -2,8 +2,10 @@ import time
 import couchdb
 import simplejson as json
 
+class Stats(object):
+    pass
 
-class ViewPager(object):
+class CouchDBViewPager(object):
 
     def __init__(self, view_func, view_name, **args):
         # We can't allow these, we need them to control paging correctly.
@@ -15,6 +17,8 @@ class ViewPager(object):
         self.args = args
 
     def get(self, pagesize, pageref=None):
+
+        S = Stats()
 
         # Decode the pageref
         pageref = _decode_ref(pageref)
@@ -34,6 +38,7 @@ class ViewPager(object):
         args['limit'] = pagesize+2
 
         # Fetch the rows from the view_name.
+        print pageref, self.view_name, args
         rows = list(self.view_func(self.view_name, **args))
 
         # Assume to ref documents by default.
@@ -79,7 +84,57 @@ class ViewPager(object):
         if pageref and pageref['direction'] == 'prev':
             rows = rows[::-1]
 
-        return _encode_ref(prevref), rows, _encode_ref(nextref)
+        return _encode_ref(prevref), rows, _encode_ref(nextref), S
+
+
+class CouchDBSkipLimitViewPager(object):
+
+    def __init__(self, view_func, view_name, count_view_name, **args):
+        # We can't allow these, we need them to control paging correctly.
+        assert 'limit' not in args
+        assert 'startkey_docid' not in args
+        assert 'endkey_docid' not in args
+        self.view_func = view_func
+        self.view_name = view_name
+        self.count_view_name = count_view_name
+        self.args = args
+
+    def get(self, pagesize, pageref=None):
+
+        S = Stats()
+
+        try:
+            page_number = int(pageref)
+        except (ValueError, TypeError):
+            page_number = 1
+        
+        # Work out the total count if a view is available
+        result = list(self.view_func(self.count_view_name))
+        item_count = result[0].value
+
+        total_pages = item_count/pagesize
+
+        if item_count % pagesize:
+            total_pages += 1
+        if page_number > total_pages:
+            page_number = total_pages
+        
+        skip = (page_number-1)*pagesize
+        docs = list(self.view_func(self.view_name, skip=skip, limit=pagesize, **self.args))
+
+        nextref = None
+        prevref = None
+
+        if page_number < total_pages:
+            nextref = str(page_number+1)
+        if page_number >1:
+            prevref = str(page_number-1)
+
+        S.page_number = page_number
+        S.total_pages = total_pages
+        S.item_count = item_count
+        return prevref, docs, nextref, S
+
 
 
 def _encode_ref(ref):
@@ -95,16 +150,18 @@ def _decode_ref(ref):
 
 
 if __name__ == '__main__':
-    #db = couchdb.Server()['paging']
-    #p = ViewPager(db.view, 'test/test')
-    #p = ViewPager(db.view, 'test/test', descending=True)
-    db = couchdb.Server()['paging2']
-    #p = ViewPager(db.view, 'test/test', startkey=["b"], endkey=["b", {}])
-    p = ViewPager(db.view, 'test/test', startkey=["b", {}], endkey=["b"], descending=True)
+    db = couchdb.Server()['test']
+    #p = CouchDBSkipLimitViewPager(db.view, 'test/all','test/count')
+    p = CouchDBSkipLimitViewPager(db.view, 'test/all','test/count', descending=True)
+    #p = CouchDBViewPager(db.view, 'test/test')
+    #p = CouchDBViewPager(db.view, 'test/test', descending=True)
+    #db = couchdb.Server()['paging2']
+    #p = CouchDBViewPager(db.view, 'test/test', startkey=["b"], endkey=["b", {}])
+    #p = CouchDBViewPager(db.view, 'test/test', startkey=["b", {}], endkey=["b"], descending=True)
     next = None
     print "***** forwards"
     while True:
-        prev, rows, next = p.get(5, next)
+        prev, rows, next, stats = p.get(5, next)
         print "* prev:", prev
         print "* next:", next
         for row in rows:
@@ -115,7 +172,7 @@ if __name__ == '__main__':
             break
     print "***** backwards"
     while True:
-        prev, rows, next = p.get(5, prev)
+        prev, rows, next, stats = p.get(5, prev)
         print "* prev:", prev
         print "* next:", next
         for row in rows:
@@ -125,7 +182,7 @@ if __name__ == '__main__':
         if not prev:
             break
     print "***** forward one page"
-    prev, rows, next = p.get(5, next)
+    prev, rows, next, stats = p.get(5, next)
     print "* prev:", prev
     print "* next:", next
     for row in rows:
