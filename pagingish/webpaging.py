@@ -2,6 +2,9 @@ from pagingish.couchdb_pager import CouchDBSkipLimitViewPager, CouchDBViewPager
 
 
 class Paging(object):
+    """
+    Interface for web properties
+    """
 
     def __init__(self, request, docs, page_number=None, total_pages=None,
                  page_size=None, item_count=None, next_ref=None, prev_ref=None,
@@ -79,16 +82,13 @@ class Paging(object):
                 self._range_center is not None and \
                 self._range_right is not None
 
-
 class CouchDBPaging(Paging):
     """
-    if startkey is not used then we can use the view results to get the offset, counts OK
+    Basic next/prev paging. This is the recommended way of paging using CouchDB.
     """
-
     def __init__(self, view_func, view_name, default_page_size=10, **args):
         self.pager = CouchDBViewPager(view_func, view_name, **args)
         self.default_page_size = default_page_size
-
 
     def load_from_request(self, request):
         self.request = request
@@ -106,18 +106,12 @@ class CouchDBPaging(Paging):
         range_right = []
         
         Paging.__init__(self, self.request, docs, page_number, total_pages, page_size, item_count, next_ref, prev_ref, range_left, range_center, range_right)
-          
-
-
-def get_integer_from_request(request, key, default):
-    value = request.GET.get(key, default)
-    try:
-        return int(value)
-    except (ValueError, TypeError):
-        return default
 
 
 class CouchDBSkipLimitPaging(Paging):
+    """
+    Paging with full statistics but using the skip attribute which is not recommended because of performance issues (full scans of indexes possibly needed)
+    """
 
     def __init__(self, view_func, view_name, count_view_name, default_page_size=10,pages_per_side=2, **args):
         assert 'limit' not in args
@@ -179,3 +173,10 @@ class CouchDBSkipLimitPaging(Paging):
 
         Paging.__init__(self, self.request, docs, page_number, stats.total_pages, page_size, stats.item_count, next_ref, prev_ref, range_left, range_center, range_right)
 
+
+def get_integer_from_request(request, key, default):
+    value = request.GET.get(key, default)
+    try:
+        return int(value)
+    except (ValueError, TypeError):
+        return default

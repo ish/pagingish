@@ -23,11 +23,18 @@ class CouchDBViewPager(object):
         args = dict(self.args)
         if pageref:
             if pageref['direction'] == 'prev':
-                args['descending'] = not args.get('descending', False)
-                if 'startkey' in args:
-                    args['endkey'] = args.get('startkey')
-            args['startkey'] = pageref['startkey']
-            args['startkey_docid'] = pageref['startkey_docid']
+                args['descending'] = not self.args.get('descending', False)
+                if 'startkey' in self.args:
+                    args['endkey'] = self.args.get('startkey')
+
+
+            if 'startkey' in pageref:
+                args['startkey'] = pageref['startkey']
+                args['startkey_docid'] = pageref['startkey_docid']
+            else:
+                args['startkey'] = self.args['endkey']
+                args['endkey'] = self.args['startkey']
+                args['descending'] = not self.args.get('descending', False)
 
         # Try to get two extra rows to detect previous and next pages as
         # efficiently as possible.
@@ -43,34 +50,65 @@ class CouchDBViewPager(object):
         # Find the ref document to move a page in the opposite direction to the
         # pageref's direction (default is 'next').
         if pageref and len(rows) >=2 and rows[0].id == pageref['startkey_docid']:
+            print '2+ rows and its the first is the pagref startkey_docid'
             # Page reference document found
             if pageref['direction'] == 'next':
-                prevref = rows[1]
+                prevref = ref_from_doc('prev',rows[1])
             else:
-                nextref = rows[1]
+                nextref = ref_from_doc('next',rows[1])
+            rows = rows[1:]
+        elif pageref and rows and rows[0].id == pageref['startkey_docid']:
+            print '1 row and its the pagref startkey_docid'
+            if pageref['direction'] == 'next':
+                prevref = {'direction': 'prev'}
+            else:
+                nextref = {'direction': 'next'}
             rows = rows[1:]
         elif pageref and rows and rows[0].id != pageref['startkey_docid']:
             # Page ref document missing, so need to work out if there is a next
             # or prev page by calling the view in that "direction".
-            raise NotImplementError()
+            print 'only one row and its not the pagref startkey_docid'
+            args = dict(self.args)
+            args['startkey'] = pageref['startkey']
+            args['startkey_docid'] = pageref['startkey_docid']
+            args['limit'] = 1
+            args['descending'] = not args.get('descending', False)
+            revrows = list(self.view_func(self.view_name, **args))
+            if len(revrows) >= 1:
+                if pageref['direction'] == 'next':
+                    prevref = ref_from_doc('prev',revrows[0])
+                else:
+                    nextref = ref_from_doc('next',revrows[0])
+            else:
+                if pageref['direction'] == 'next':
+                    prevref = {'direction': 'prev'}
+                else:
+                    nextref = {'direction': 'next'}
+
         elif pageref and not rows:
+            print 'no rows !!'
             # No data at all, but might still be a previous page. Is this
             # really the same as the previous elif?
-            raise NotImplementError()
+            args = dict(self.args)
+            args['startkey'] = pageref['startkey']
+            args['startkey_docid'] = pageref['startkey_docid']
+            args['limit'] = 1
+            args['descending'] = not args.get('descending', False)
+            revrows = list(self.view_func(self.view_name, **args))
+            if len(revrows) >= 1:
+                if pageref['direction'] == 'next':
+                    prevref = ref_from_doc('prev',revrows[0])
+                else:
+                    nextref = ref_from_doc('next',revrows[0])
 
         # Find the ref document to move a page in the same direction as the
         # pageref's direction (default is 'next').
         if len(rows) > pagesize:
             if pageref and pageref['direction'] == 'prev':
-                prevref = rows[pagesize-1]
+                prevref = ref_from_doc('prev',rows[pagesize-1])
             else:
-                nextref = rows[pagesize-1]
+                nextref = ref_from_doc('next',rows[pagesize-1])
 
-        # Turn ref docs into dicts.
-        if prevref:
-            prevref = {'direction': 'prev', 'startkey': prevref.key, 'startkey_docid': prevref.id}
-        if nextref:
-            nextref = {'direction': 'next', 'startkey': nextref.key, 'startkey_docid': nextref.id}
 
         # Discard any extra remaining rows and return the control set.
         rows = rows[:pagesize]
@@ -80,6 +118,9 @@ class CouchDBViewPager(object):
             rows = rows[::-1]
 
         return _encode_ref(prevref), rows, _encode_ref(nextref), {}
+
+def ref_from_doc(dir,doc):
+    return {'direction': dir, 'startkey': doc.key, 'startkey_docid': doc.id}
 
 
 class CouchDBSkipLimitViewPager(object):
@@ -95,29 +136,35 @@ class CouchDBSkipLimitViewPager(object):
         self.args = args
 
     def get(self, pagesize, pageref=None):
-
         try:
             page_number = int(pageref)
         except (ValueError, TypeError):
             page_number = 1
         
-        # Work out the total count if a view is available
+        # Work out the total count of items 
         result = list(self.view_func(self.count_view_name))
-        item_count = result[0].value
+        if len(result) == 0:
+            item_count = 0
+        else:
+            item_count = result[0].value
 
+        # Work out total number of pages. e.g. for page_size = 10, 0-10 items
+        # is page 1, 11-20 items is page 2, etc. Cope with out of bounds
+        # page_numbers
         total_pages = item_count/pagesize
-
         if item_count % pagesize:
             total_pages += 1
         if page_number > total_pages:
             page_number = total_pages
+        if page_number < 1:
+            page_number == 1
         
         skip = (page_number-1)*pagesize
         docs = list(self.view_func(self.view_name, skip=skip, limit=pagesize, **self.args))
 
+        # next and prev pagerefs (None for not available)
         nextref = None
         prevref = None
-
         if page_number < total_pages:
             nextref = str(page_number+1)
         if page_number >1:
@@ -134,6 +181,8 @@ class CouchDBSkipLimitViewPager(object):
 def _encode_ref(ref):
     if ref is None:
         return None
+    if 'startkey' not in ref:
+        return json.dumps([ref['direction']])
     return json.dumps([ref['direction'], ref['startkey'], ref['startkey_docid']])
 
 
