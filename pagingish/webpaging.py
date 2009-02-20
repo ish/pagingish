@@ -73,6 +73,11 @@ class Paging(object):
     def range_right(self):
         return self._range_right
 
+    @property
+    def has_range(self):
+        return self._range_left is not None and \
+                self._range_center is not None and \
+                self._range_right is not None
 
 
 class CouchDBPaging(Paging):
