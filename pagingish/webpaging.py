@@ -3,7 +3,9 @@ from pagingish.couchdb_pager import CouchDBSkipLimitViewPager, CouchDBViewPager
 
 class Paging(object):
 
-    def __init__(self, request, docs, page_number, total_pages, page_size, item_count, next_ref, prev_ref, range_left, range_center, range_right):
+    def __init__(self, request, docs, page_number=None, total_pages=None,
+                 page_size=None, item_count=None, next_ref=None, prev_ref=None,
+                 range_left=None, range_center=None, range_right=None):
         self.request = request
         self._docs = docs
         self._page_number = page_number
