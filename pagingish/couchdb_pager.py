@@ -2,8 +2,6 @@ import time
 import couchdb
 import simplejson as json
 
-class Stats(object):
-    pass
 
 class CouchDBViewPager(object):
 
@@ -17,8 +15,6 @@ class CouchDBViewPager(object):
         self.args = args
 
     def get(self, pagesize, pageref=None):
-
-        S = Stats()
 
         # Decode the pageref
         pageref = _decode_ref(pageref)
@@ -83,7 +79,7 @@ class CouchDBViewPager(object):
         if pageref and pageref['direction'] == 'prev':
             rows = rows[::-1]
 
-        return _encode_ref(prevref), rows, _encode_ref(nextref), S
+        return _encode_ref(prevref), rows, _encode_ref(nextref), {}
 
 
 class CouchDBSkipLimitViewPager(object):
@@ -99,8 +95,6 @@ class CouchDBSkipLimitViewPager(object):
         self.args = args
 
     def get(self, pagesize, pageref=None):
-
-        S = Stats()
 
         try:
             page_number = int(pageref)
@@ -129,10 +123,11 @@ class CouchDBSkipLimitViewPager(object):
         if page_number >1:
             prevref = str(page_number-1)
 
-        S.page_number = page_number
-        S.total_pages = total_pages
-        S.item_count = item_count
-        return prevref, docs, nextref, S
+        stats = {'page_number': page_number,
+                 'total_pages': total_pages,
+                 'item_count': item_count}
+
+        return prevref, docs, nextref, stats
 
 
 
