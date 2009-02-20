@@ -36,6 +36,8 @@ def assert_page(page, prev, rows, next, stats, expecteds):
 
 
     actual = [r.key for r in rows]
+    print '----------------------'
+    print 'expecteds', expecteds
     print 'page', page
     print 'prev', prev
     print 'next', next
@@ -305,6 +307,8 @@ class TestCouchDBPager_alterlist_10items(TestCase):
             del self.db['id-%s'%i]
         prev, rows, next, stats = p.get(5, next)
         assert_page(2, prev, rows, next, stats, e5pp_10t_after)
+        prev, rows, next, stats = p.get(5, prev)
+        assert_page(1, prev, rows, next, stats, e5pp_10t_after)
 
     def test_remove_whole_next_page_reverse(self):
         e5pp_10t_before = [ [9,8,7,6,5], [4,3,2,1,0] ]
@@ -317,6 +321,11 @@ class TestCouchDBPager_alterlist_10items(TestCase):
             del self.db['id-%s'%i]
         prev, rows, next, stats = p.get(5, next)
         assert_page(2, prev, rows, next, stats, e5pp_10t_after)
+        prev, rows, next, stats = p.get(5, prev)
+        assert_page(1, prev, rows, next, stats, e5pp_10t_after)
+        prev, rows, next, stats = p.get(5, next)
+        assert_page(2, prev, rows, next, stats, e5pp_10t_after)
+
 
     def test_remove_alldata(self):
         e5pp_10t_before = [ [0,1,2,3,4], [5,6,7,8,9] ]
@@ -329,6 +338,8 @@ class TestCouchDBPager_alterlist_10items(TestCase):
             del self.db['id-%s'%i]
         prev, rows, next, stats = p.get(5, next)
         assert_page(2, prev, rows, next, stats, e5pp_10t_after)
+        prev, rows, next, stats = p.get(5, prev)
+        assert_page(1, prev, rows, next, stats, e5pp_10t_after)
 
     def test_remove_alldata_reversed(self):
         e5pp_10t_before = [ [9,8,7,6,5], [4,3,2,1,0] ]
@@ -341,3 +352,105 @@ class TestCouchDBPager_alterlist_10items(TestCase):
             del self.db['id-%s'%i]
         prev, rows, next, stats = p.get(5, next)
         assert_page(2, prev, rows, next, stats, e5pp_10t_after)
+
+# 15 items (n per page)
+
+class TestCouchDBPager_alterlist_15items(TestCase):
+
+    def setUp(self):
+        self.db = create_items(dbname,force_create=True, model_type=model_type, items=sequence_generator(15))
+        map_fun = 'function(doc) { if (doc.model_type == "%s") { emit(doc.num, 1); } }'%model_type
+        reduce_fun = 'function(keys, values) { return sum(values) }'
+        create_view(self.db, model_type,'all',map_fun)
+        create_view(self.db, model_type,'count',map_fun, reduce_fun)
+
+    def test_remove_prevref(self):
+        e5pp_15t_before = [ [0,1,2,3,4], [5,6,7,8,9], [10,11,12,13,14] ]
+        e5pp_15t_after = [ [0,1,2,3], [5,6,7,8,9], [10,11,12,13,14] ]
+        p = CouchDBViewPager(self.db.view, '%s/all'%model_type)
+        prev, rows, next, stats = p.get(5, None)
+        assert_page(1, prev, rows, next, stats, e5pp_15t_before)
+        del self.db['id-4']
+        prev, rows, next, stats = p.get(5, next)
+        assert_page(2, prev, rows, next, stats, e5pp_15t_after)
+
+
+    def test_remove_prevrefandfirst(self):
+        e5pp_15t_before = [ [0,1,2,3,4], [5,6,7,8,9], [10,11,12,13,14] ]
+        e5pp_15t_after = [ [0,1,2,3], [6,7,8,9,10], [11,12,13,14] ]
+        p = CouchDBViewPager(self.db.view, '%s/all'%model_type)
+        prev, rows, next, stats = p.get(5, None)
+        assert_page(1, prev, rows, next, stats, e5pp_15t_before)
+        del self.db['id-4']
+        del self.db['id-5']
+        prev, rows, next, stats = p.get(5, next)
+        assert_page(2, prev, rows, next, stats, e5pp_15t_after)
+
+    def test_remove_prevrefandfirst_thenprev(self):
+        e5pp_15t_before = [ [0,1,2,3,4], [5,6,7,8,9], [10,11,12,13,14] ]
+        e5pp_15t_after = [ [0,1,2,3], [6,7,8,9,10], [11,12,13,14] ]
+        p = CouchDBViewPager(self.db.view, '%s/all'%model_type)
+        prev, rows, next, stats = p.get(5, None)
+        assert_page(1, prev, rows, next, stats, e5pp_15t_before)
+        del self.db['id-4']
+        del self.db['id-5']
+        prev, rows, next, stats = p.get(5, next)
+        assert_page(2, prev, rows, next, stats, e5pp_15t_after)
+        prev, rows, next, stats = p.get(5, prev)
+        assert_page(1, prev, rows, next, stats, e5pp_15t_after)
+
+
+# 10 items (n per page)
+
+class TestCouchDBPager_10items_withstartend(TestCase):
+
+    def setUp(self):
+        self.db = create_items(dbname,force_create=True, model_type=model_type, items=sequence_generator(20))
+        map_fun = 'function(doc) { if (doc.model_type == "%s") { emit(doc.num, 1); } }'%model_type
+        reduce_fun = 'function(keys, values) { return sum(values) }'
+        create_view(self.db, model_type,'all',map_fun)
+        create_view(self.db, model_type,'count',map_fun, reduce_fun)
+
+    def test_roundtrip_5pp(self):
+        p = CouchDBViewPager(self.db.view, '%s/all'%model_type, startkey=5, endkey=14)
+        expecteds = [ [5,6,7,8,9],[10,11,12,13,14] ]
+        prev, rows, next, stats = p.get(5, None)
+        assert_page(1,prev, rows, next, stats, expecteds)
+        prev, rows, next, stats = p.get(5, next)
+        assert_page(2,prev, rows, next, stats, expecteds)
+        prev, rows, next, stats = p.get(5, prev)
+        assert_page(1,prev, rows, next, stats, expecteds)
+
+    def test_roundtrip_5pp_reversed(self):
+        p = CouchDBViewPager(self.db.view, '%s/all'%model_type, startkey=14, endkey=5, descending=True)
+        expecteds = [ [14,13,12,11,10],[9,8,7,6,5] ]
+        prev, rows, next, stats = p.get(5, None)
+        assert_page(1,prev, rows, next, stats, expecteds)
+        prev, rows, next, stats = p.get(5, next)
+        assert_page(2,prev, rows, next, stats, expecteds)
+        prev, rows, next, stats = p.get(5, prev)
+        assert_page(1,prev, rows, next, stats, expecteds)
+
+
+# 15 items (n per page)
+
+class TestCouchDBPager_alterlist_15items_withstartend(TestCase):
+
+    def setUp(self):
+        self.db = create_items(dbname,force_create=True, model_type=model_type, items=sequence_generator(15))
+        map_fun = 'function(doc) { if (doc.model_type == "%s") { emit(doc.num, 1); } }'%model_type
+        reduce_fun = 'function(keys, values) { return sum(values) }'
+        create_view(self.db, model_type,'all',map_fun)
+        create_view(self.db, model_type,'count',map_fun, reduce_fun)
+
+    def test_remove_prevref(self):
+        e5pp_15t_before = [ [2,3,4,5,6], [7,8,9,10,11], [12] ]
+        e5pp_15t_after = [ [2,3,4,5], [7,8,9,10,11], [12] ]
+        p = CouchDBViewPager(self.db.view, '%s/all'%model_type, startkey=2, endkey=12)
+        prev, rows, next, stats = p.get(5, None)
+        assert_page(1, prev, rows, next, stats, e5pp_15t_before)
+        del self.db['id-6']
+        prev, rows, next, stats = p.get(5, next)
+        assert_page(2, prev, rows, next, stats, e5pp_15t_after)
+
+
