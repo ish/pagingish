@@ -46,12 +46,12 @@ class Paging(object):
     @property
     def next(self):
         """ The next url """
-        return self.request.path.add_query('page_ref',self._next_ref)
+        return self.request.path_qs.replace_query('page_ref',self._next_ref)
     
     @property
     def prev(self):
         """ The prev url """
-        return self.request.path.add_query('page_ref',self._prev_ref)
+        return self.request.path_qs.replace_query('page_ref',self._prev_ref)
 
     @property
     def has_prev(self):
