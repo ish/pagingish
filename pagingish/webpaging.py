@@ -1,6 +1,5 @@
-from __future__ import with_statement
-import pdb
 from pagingish.couchdb_pager import CouchDBSkipLimitViewPager, CouchDBViewPager
+
 
 class Paging(object):
 
@@ -110,8 +109,8 @@ def get_integer_from_request(request, key, default):
     except (ValueError, TypeError):
         return default
 
-class CouchDBSkipLimitPaging(Paging):
 
+class CouchDBSkipLimitPaging(Paging):
 
     def __init__(self, view_func, view_name, count_view_name, default_page_size=10,pages_per_side=2, **args):
         assert 'limit' not in args
@@ -172,16 +171,4 @@ class CouchDBSkipLimitPaging(Paging):
                     range_right.append(range)
 
         Paging.__init__(self, self.request, docs, page_number, stats.total_pages, page_size, stats.item_count, next_ref, prev_ref, range_left, range_center, range_right)
-
-
-
-
-
-
-
-
-
-
-
-
 
