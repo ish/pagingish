@@ -23,16 +23,21 @@ class CouchDBViewPager(object):
         args = dict(self.args)
         if pageref:
             if pageref['direction'] == 'prev':
+                # if we're going in the opposite to normal direction, reverse
+                # the data scan direction and use endkey instead of startkey
                 args['descending'] = not self.args.get('descending', False)
                 if 'startkey' in self.args:
                     args['endkey'] = self.args.get('startkey')
 
 
             if 'startkey' in pageref:
+                # if we have a startkey/startkey_docid in the pageref, then use it 
                 args['startkey'] = pageref['startkey']
                 if 'startkey_docid' in pageref:
                     args['startkey_docid'] = pageref['startkey_docid']
             else:
+                # else this is the special hack case where we are taking the
+                # last page of data by reversing the normal search
                 if 'endkey' in self.args:
                     args['startkey'] = self.args['endkey']
                 if 'startkey' in self.args:
@@ -53,24 +58,42 @@ class CouchDBViewPager(object):
         # Find the ref document to move a page in the opposite direction to the
         # pageref's direction (default is 'next').
         if pageref and len(rows) >=2 and rows[0].id == pageref.get('startkey_docid'):
-            print '### 2+ rows and the first is the pagref startkey_docid'
-            # Page reference document found
+            # 2+ rows and the first is the pagref startkey_docid'
+
+            # If we have a page reference document then we know we have
+            # previous items. Strip this pageref doc from the rows once the
+            # prev button has been built
             if pageref['direction'] == 'next':
                 prevref = ref_from_doc('prev',rows[1])
             else:
                 nextref = ref_from_doc('next',rows[1])
             rows = rows[1:]
+
+
         elif pageref and rows and rows[0].id == pageref.get('startkey_docid'):
-            print '### only one row and it\'s the pageref startkey_docid'
+            # only one row and it's the pageref startkey_docid'
+
+            # Because we don't have any real items on this page, we can't use
+            # the first item as the startkey_docid for the previous button
+            #
+            # To cope with this we have to send a custom response to tell the
+            # pager that it needs to be clever and instead of doing a normal
+            # page look up, do a reverse lookup from the end of the current
+            # search
             if pageref['direction'] == 'next':
                 prevref = {'direction': 'prev'}
             else:
                 nextref = {'direction': 'next'}
             rows = rows[1:]
+
+
         elif pageref and rows and rows[0].id != pageref.get('startkey_docid'):
-            # Page ref document missing, so need to work out if there is a next
-            # or prev page by calling the view in that "direction".
-            print '### 1+ and the first is not the pagref startkey_docid'
+            # 1+ rows and the first is not the pageref's startkey_docid'
+
+            # We need to query from the first item but backwards (removing any
+            # endkey) to check if we have anything previous. If we do then add
+            # a prev link
+
             args = dict(self.args)
             args['startkey'] = rows[0].key
             args['startkey_docid'] = rows[0].id
@@ -79,7 +102,6 @@ class CouchDBViewPager(object):
             args['limit'] = 1
             args['descending'] = not args.get('descending', False)
             revrows = list(self.view_func(self.view_name, **args))
-            print '(( got %s for revrows using %s args ))'%(revrows, args)
             if len(revrows) >= 1:
                 if pageref['direction'] == 'next':
                     prevref = ref_from_doc('prev',rows[0])
@@ -87,8 +109,11 @@ class CouchDBViewPager(object):
                     nextref = ref_from_doc('next',rows[0])
 
         elif pageref and not rows:
-            print '### no rows !!'
-            # No data at all, but might still be a previous page. Scan in the reverse direction to get the first item
+            # no rows !!
+
+            # No data at all, but there might still be a previous page. 
+            # Scan in the reverse direction to get the first item (clearing any
+            # endkey to make sure we don't cut off our own results)
             args = dict(self.args)
             args['startkey'] = pageref['startkey']
             args['startkey_docid'] = pageref['startkey_docid']
@@ -97,6 +122,11 @@ class CouchDBViewPager(object):
             args['limit'] = 1
             args['descending'] = not args.get('descending', False)
             revrows = list(self.view_func(self.view_name, **args))
+            # We have the same issue as in the 'only one row and pagref match'
+            # case. We don't have a first item on the current page that we can
+            # use as the start point for a previous page. Hence we do the hack
+            # which tells the pager to use the last page of results in this
+            # special case
             if len(revrows) >= 1:
                 if pageref['direction'] == 'next':
                     prevref = {'direction': 'prev'}
@@ -194,42 +224,4 @@ def _decode_ref(ref):
     return dict(zip(['direction', 'startkey', 'startkey_docid'], json.loads(ref)))
 
 
-if __name__ == '__main__':
-    db = couchdb.Server()['test']
-    #p = CouchDBSkipLimitViewPager(db.view, 'test/all','test/count')
-    p = CouchDBSkipLimitViewPager(db.view, 'test/all','test/count', descending=True)
-    #p = CouchDBViewPager(db.view, 'test/test')
-    #p = CouchDBViewPager(db.view, 'test/test', descending=True)
-    #db = couchdb.Server()['paging2']
-    #p = CouchDBViewPager(db.view, 'test/test', startkey=["b"], endkey=["b", {}])
-    #p = CouchDBViewPager(db.view, 'test/test', startkey=["b", {}], endkey=["b"], descending=True)
-    next = None
-    print "***** forwards"
-    while True:
-        prev, rows, next, stats = p.get(5, next)
-        print "* prev:", prev
-        print "* next:", next
-        for row in rows:
-            print "-", row
-        print
-        time.sleep(0.5)
-        if not next:
-            break
-    print "***** backwards"
-    while True:
-        prev, rows, next, stats = p.get(5, prev)
-        print "* prev:", prev
-        print "* next:", next
-        for row in rows:
-            print "-", row
-        print
-        time.sleep(0.5)
-        if not prev:
-            break
-    print "***** forward one page"
-    prev, rows, next, stats = p.get(5, next)
-    print "* prev:", prev
-    print "* next:", next
-    for row in rows:
-        print "-", row
 
