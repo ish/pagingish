@@ -38,7 +38,6 @@ class CouchDBViewPager(object):
         args['limit'] = pagesize+2
 
         # Fetch the rows from the view_name.
-        print pageref, self.view_name, args
         rows = list(self.view_func(self.view_name, **args))
 
         # Assume to ref documents by default.
