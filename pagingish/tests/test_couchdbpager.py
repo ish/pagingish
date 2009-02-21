@@ -36,28 +36,16 @@ def assert_page(page, prev, rows, next, stats, expecteds):
 
 
     actual = [r.key for r in rows]
-    print '----------------------'
-    print 'expecteds', expecteds
-    print 'page', page
-    print 'prev', prev
-    print 'next', next
-    print 'rows', rows
-    print 'expected', expected
-    print 'actual', actual
     assert expected == actual
     if page >= len(expecteds) or (page < len(expecteds) and len(expecteds) == 1):
-        print 'assert next is None'
         assert next is None
     else:
-        print 'assert next is not None'
         assert next is not None
 
     # if the page is <= 1 *or* the page too big and the actuall length of the data is 1. This last may happen if enough items are removed after the previous paging to reduce the number of pages to 1
     if page <= 1 or (page > len(expecteds) and len(expecteds) == 1):
-        print 'assert prev is None'
         assert prev is None
     else:
-        print 'assert prev is not None'
         assert prev is not None
 
 # Test sub sets (i.e. passing startkey endkey)
@@ -319,7 +307,6 @@ class TestCouchDBPager_alterlist_10items(TestCase):
         prev, rows, next, stats = p.get(5, None)
         assert_page(1, prev, rows, next, stats, e5pp_10t_before)
         for i in xrange(0,5):
-            print 'deleting id-%s'%i
             del self.db['id-%s'%i]
         prev, rows, next, stats = p.get(5, next)
         assert_page(2, prev, rows, next, stats, e5pp_10t_after)
@@ -336,7 +323,6 @@ class TestCouchDBPager_alterlist_10items(TestCase):
         prev, rows, next, stats = p.get(5, None)
         assert_page(1, prev, rows, next, stats, e5pp_10t_before)
         for i in xrange(0,10):
-            print 'deleting id-%s'%i
             del self.db['id-%s'%i]
         prev, rows, next, stats = p.get(5, next)
         assert_page(2, prev, rows, next, stats, e5pp_10t_after)
@@ -350,7 +336,6 @@ class TestCouchDBPager_alterlist_10items(TestCase):
         prev, rows, next, stats = p.get(5, None)
         assert_page(1, prev, rows, next, stats, e5pp_10t_before)
         for i in xrange(0,10):
-            print 'deleting id-%s'%i
             del self.db['id-%s'%i]
         prev, rows, next, stats = p.get(5, next)
         assert_page(2, prev, rows, next, stats, e5pp_10t_after)
@@ -486,15 +471,65 @@ class TestCouchDBPager_alterlist_15items_withstartend(TestCase):
         prev, rows, next, stats = p.get(5, None)
         assert_page(1, prev, rows, next, stats, e5pp_15t_before)
         for i in xrange(6,13):
-            print 'deleting id-%s'%i
             del self.db['id-%s'%i]
         prev, rows, next, stats = p.get(5, next)
         assert_page(2, prev, rows, next, stats, e5pp_15t_after)
-        print '*** final ***'
         prev, rows, next, stats = p.get(5, prev)
         assert_page(1, prev, rows, next, stats, e5pp_15t_after_secondpass)
-        #prev, rows, next, stats = p.get(5, next)
-        #assert_page(1, prev, rows, next, stats, e5pp_15t_after_secondpass)
-        #prev, rows, next, stats = p.get(5, next)
-        #assert_page(1, prev, rows, next, stats, e5pp_15t_after_secondpass)
+        prev, rows, next, stats = p.get(5, next)
+        assert_page(1, prev, rows, next, stats, e5pp_15t_after_secondpass)
 
+    def test_remove_lots_trigger_hack_and_revscan(self):
+        e5pp_15t_before = [ [2,3,4,5,6], [7,8,9,10,11], [12] ]
+        e5pp_15t_after = [ [2,3,4,5,6], [7,8,9,10], [] ]
+        e5pp_15t_after_secondpass = [ [2,3,4,5] ]
+        e5pp_15t_after_lastpass = [ [2,3,4,5] ]
+        p = CouchDBViewPager(self.db.view, '%s/all'%model_type, startkey=2, endkey=12)
+        prev, rows, next, stats = p.get(5, None)
+        assert_page(1, prev, rows, next, stats, e5pp_15t_before)
+
+        prev, rows, next, stats = p.get(5, next)
+        assert_page(2, prev, rows, next, stats, e5pp_15t_before)
+
+        del self.db['id-11']
+        del self.db['id-12']
+        prev, rows, next, stats = p.get(5, next)
+        assert_page(3, prev, rows, next, stats, e5pp_15t_after)
+
+        del self.db['id-10']
+        del self.db['id-9']
+        del self.db['id-8']
+        del self.db['id-7']
+        del self.db['id-6']
+        prev, rows, next, stats = p.get(5, prev)
+        assert_page(2, prev, rows, next, stats, e5pp_15t_after_secondpass)
+
+        prev, rows, next, stats = p.get(5, prev)
+        assert_page(1, prev, rows, next, stats, e5pp_15t_after_secondpass)
+
+    def test_remove_lots_trigger_hack_and_revscan2(self):
+        e5pp_15t_before = [ [2,3,4,5,6], [7,8,9,10,11], [12] ]
+        e5pp_15t_after1 = [ [2,3,4,5,6], [7,8,9,10,11], [] ]
+        e5pp_15t_after2 = [ [2,3,4,5], [7,8,9,10,11] ]
+        e5pp_15t_after_secondpass = [ [], [7,8,9,10,11] ]
+        p = CouchDBViewPager(self.db.view, '%s/all'%model_type, startkey=2, endkey=12)
+        prev, rows, next, stats = p.get(5, None)
+        assert_page(1, prev, rows, next, stats, e5pp_15t_before)
+
+        prev, rows, next, stats = p.get(5, next)
+        assert_page(2, prev, rows, next, stats, e5pp_15t_before)
+
+        del self.db['id-12']
+        prev, rows, next, stats = p.get(5, next)
+        assert_page(3, prev, rows, next, stats, e5pp_15t_after1)
+
+        del self.db['id-6']
+        prev, rows, next, stats = p.get(5, prev)
+        assert_page(2, prev, rows, next, stats, e5pp_15t_after2)
+
+        del self.db['id-5']
+        del self.db['id-4']
+        del self.db['id-3']
+        del self.db['id-2']
+        prev, rows, next, stats = p.get(5, prev)
+        assert_page(1, prev, rows, next, stats, e5pp_15t_after_secondpass)

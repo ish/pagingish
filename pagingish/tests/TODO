@@ -1,0 +1,3 @@
+? What should happen if you click next and there are no documents .. should it take you back to the previous page or show you no documents? (currently it shows no documents)
+
+* add test for adding extra documents..  (this should be OK though?)

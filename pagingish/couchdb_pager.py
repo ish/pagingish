@@ -15,11 +15,9 @@ class CouchDBViewPager(object):
         self.args = args
 
     def get(self, pagesize, pageref=None):
-        print 'SELFARGS',self.args
 
         # Decode the pageref
         pageref = _decode_ref(pageref)
-        print '>>>>',pageref
 
         # Copy the args and replace/update with paging control args.
         args = dict(self.args)
@@ -52,7 +50,6 @@ class CouchDBViewPager(object):
 
         # Fetch the rows from the view_name.
         rows = list(self.view_func(self.view_name, **args))
-        print '### rows from engine', rows
 
         # Assume to ref documents by default.
         prevref = None
@@ -62,7 +59,6 @@ class CouchDBViewPager(object):
         # pageref's direction (default is 'next').
         if pageref and len(rows) >=2 and rows[0].id == pageref.get('startkey_docid'):
             # 2+ rows and the first is the pagref startkey_docid'
-            print "2+ rows and the first is the pagref startkey_docid"
 
             # If we have a page reference document then we know we have
             # previous items. Strip this pageref doc from the rows once the
@@ -76,7 +72,6 @@ class CouchDBViewPager(object):
 
         elif pageref and rows and rows[0].id == pageref.get('startkey_docid'):
             # only one row and it's the pageref startkey_docid'
-            print " only one row and it's the pageref startkey_docid"
 
             # Because we don't have any real items on this page, we can't use
             # the first item as the startkey_docid for the previous button
@@ -94,7 +89,6 @@ class CouchDBViewPager(object):
 
         elif pageref and rows and rows[0].id != pageref.get('startkey_docid'):
             # 1+ rows and the first is not the pageref's startkey_docid'
-            print " 1+ rows and the first is not the pageref's startkey_docid"
 
             # We need to query from the first item but backwards (removing any
             # endkey) to check if we have anything previous. If we do then add
@@ -103,21 +97,16 @@ class CouchDBViewPager(object):
                 revref = rows[0]
             else:
                 revref = rows[-1]
-            print 'ARGS',args
             args = dict(self.args)
-            if pageref['direction'] == 'next':
-                print 'pagref direction is prev',pageref
-                if 'startkey' in pageref:
-                    print 'startkey is in pagref'
-                    if 'startkey' in args:
-                        print 'setting the endkey to the args startkey' 
-                        args['endkey'] = args['startkey']
+            # If we're scanning backwards then the endkey must be swapped for the start key
+            if 'startkey' in args:
+                args['endkey'] = args['startkey']
+
             args['startkey'] = revref.key
             args['startkey_docid'] = revref.id
             args['limit'] = 2
             args['descending'] = not args.get('descending', False)
             revrows = list(self.view_func(self.view_name, **args))
-            print 'checked revrows with args %s got %s'%(args, revrows)
             if len(revrows) >= 2:
                 if 'startkey' in pageref:
                     if pageref['direction'] == 'next':
@@ -132,7 +121,6 @@ class CouchDBViewPager(object):
 
         elif pageref and not rows:
             # no rows !!
-            print "no rows!!"
 
             # No data at all, but there might still be a previous page. 
             # Scan in the reverse direction to get the first item (clearing any
@@ -158,8 +146,6 @@ class CouchDBViewPager(object):
 
         # Find the ref document to move a page in the same direction as the
         # pageref's direction (default is 'next').
-        print 'if len(rows) > pagesize'
-        print 'if %s > %s'%(len(rows), pagesize)
         if len(rows) > pagesize:
             if pageref and pageref['direction'] == 'prev':
                 prevref = ref_from_doc('prev',rows[pagesize-1])
