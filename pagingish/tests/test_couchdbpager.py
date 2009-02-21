@@ -300,6 +300,7 @@ class TestCouchDBPager_alterlist_10items(TestCase):
     def test_remove_whole_next_page(self):
         e5pp_10t_before = [ [0,1,2,3,4], [5,6,7,8,9] ]
         e5pp_10t_after = [ [0,1,2,3,4], [] ]
+        e5pp_10t_after_secondpass = [ [0,1,2,3,4] ]
         p = CouchDBViewPager(self.db.view, '%s/all'%model_type)
         prev, rows, next, stats = p.get(5, None)
         assert_page(1, prev, rows, next, stats, e5pp_10t_before)
@@ -308,11 +309,12 @@ class TestCouchDBPager_alterlist_10items(TestCase):
         prev, rows, next, stats = p.get(5, next)
         assert_page(2, prev, rows, next, stats, e5pp_10t_after)
         prev, rows, next, stats = p.get(5, prev)
-        assert_page(1, prev, rows, next, stats, e5pp_10t_after)
+        assert_page(1, prev, rows, next, stats, e5pp_10t_after_secondpass)
 
     def test_remove_whole_next_page_reverse(self):
         e5pp_10t_before = [ [9,8,7,6,5], [4,3,2,1,0] ]
         e5pp_10t_after = [ [9,8,7,6,5], [] ]
+        e5pp_10t_after_secondpass = [ [9,8,7,6,5] ]
         p = CouchDBViewPager(self.db.view, '%s/all'%model_type, descending=True)
         prev, rows, next, stats = p.get(5, None)
         assert_page(1, prev, rows, next, stats, e5pp_10t_before)
@@ -322,9 +324,9 @@ class TestCouchDBPager_alterlist_10items(TestCase):
         prev, rows, next, stats = p.get(5, next)
         assert_page(2, prev, rows, next, stats, e5pp_10t_after)
         prev, rows, next, stats = p.get(5, prev)
-        assert_page(1, prev, rows, next, stats, e5pp_10t_after)
+        assert_page(1, prev, rows, next, stats, e5pp_10t_after_secondpass)
         prev, rows, next, stats = p.get(5, next)
-        assert_page(2, prev, rows, next, stats, e5pp_10t_after)
+        assert_page(2, prev, rows, next, stats, e5pp_10t_after_secondpass)
 
 
     def test_remove_alldata(self):
@@ -452,5 +454,47 @@ class TestCouchDBPager_alterlist_15items_withstartend(TestCase):
         del self.db['id-6']
         prev, rows, next, stats = p.get(5, next)
         assert_page(2, prev, rows, next, stats, e5pp_15t_after)
+        prev, rows, next, stats = p.get(5, prev)
+        assert_page(1, prev, rows, next, stats, e5pp_15t_after)
+        prev, rows, next, stats = p.get(5, next)
+        assert_page(2, prev, rows, next, stats, e5pp_15t_after)
+        prev, rows, next, stats = p.get(5, next)
+        assert_page(3, prev, rows, next, stats, e5pp_15t_after)
 
+
+    def test_remove_prevref_reversed(self):
+        e5pp_15t_before = [ [12,11,10,9,8],[7,6,5,4,3],[2]]
+        e5pp_15t_after = [ [12,11,10,9],[7,6,5,4,3],[2]]
+        p = CouchDBViewPager(self.db.view, '%s/all'%model_type, startkey=12, endkey=2, descending=True)
+        prev, rows, next, stats = p.get(5, None)
+        assert_page(1, prev, rows, next, stats, e5pp_15t_before)
+        del self.db['id-8']
+        prev, rows, next, stats = p.get(5, next)
+        assert_page(2, prev, rows, next, stats, e5pp_15t_after)
+        prev, rows, next, stats = p.get(5, prev)
+        assert_page(1, prev, rows, next, stats, e5pp_15t_after)
+        prev, rows, next, stats = p.get(5, next)
+        assert_page(2, prev, rows, next, stats, e5pp_15t_after)
+        prev, rows, next, stats = p.get(5, next)
+        assert_page(3, prev, rows, next, stats, e5pp_15t_after)
+
+    def test_remove_lots(self):
+        e5pp_15t_before = [ [2,3,4,5,6], [7,8,9,10,11], [12] ]
+        e5pp_15t_after = [ [2,3,4,5], [] ]
+        e5pp_15t_after_secondpass = [ [2,3,4,5] ]
+        p = CouchDBViewPager(self.db.view, '%s/all'%model_type, startkey=2, endkey=12)
+        prev, rows, next, stats = p.get(5, None)
+        assert_page(1, prev, rows, next, stats, e5pp_15t_before)
+        for i in xrange(6,13):
+            print 'deleting id-%s'%i
+            del self.db['id-%s'%i]
+        prev, rows, next, stats = p.get(5, next)
+        assert_page(2, prev, rows, next, stats, e5pp_15t_after)
+        print '*** final ***'
+        prev, rows, next, stats = p.get(5, prev)
+        assert_page(1, prev, rows, next, stats, e5pp_15t_after_secondpass)
+        #prev, rows, next, stats = p.get(5, next)
+        #assert_page(1, prev, rows, next, stats, e5pp_15t_after_secondpass)
+        #prev, rows, next, stats = p.get(5, next)
+        #assert_page(1, prev, rows, next, stats, e5pp_15t_after_secondpass)
 
