@@ -132,6 +132,7 @@ class CouchDBSkipLimitPaging(Paging):
         
         range_left = [] 
         range_right = [] 
+        range_center = None
         for page in xrange( page_number-(self.pages_per_side+1), page_number+(self.pages_per_side+1)+1 ):
             position = page-page_number
             is_start = False
@@ -146,7 +147,7 @@ class CouchDBSkipLimitPaging(Paging):
             # is the current slot within the page range
             if page < 1:
                 is_within_range = False
-            elif page > stats.total_pages:
+            elif page > stats['total_pages']:
                 is_within_range = False
             else:
                 is_within_range = True
@@ -158,7 +159,7 @@ class CouchDBSkipLimitPaging(Paging):
                 continue
 
             if is_end and is_within_range:
-                range_right.append( {'url': self.request.path.add_query('page_ref',stats.total_pages), 'label': '...'} )
+                range_right.append( {'url': self.request.path.add_query('page_ref',stats['total_pages']), 'label': '...'} )
                 continue
 
             if is_within_range:
@@ -171,7 +172,7 @@ class CouchDBSkipLimitPaging(Paging):
                 if position > 0:
                     range_right.append(range)
 
-        Paging.__init__(self, self.request, docs, page_number, stats.total_pages, page_size, stats.item_count, next_ref, prev_ref, range_left, range_center, range_right)
+        Paging.__init__(self, self.request, docs, page_number, stats['total_pages'], page_size, stats['item_count'], next_ref, prev_ref, range_left, range_center, range_right)
 
 
 def get_integer_from_request(request, key, default):
