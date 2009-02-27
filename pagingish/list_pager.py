@@ -13,10 +13,7 @@ class ListPager(object):
             pageref = 1
         # Get some stats
         item_count = len(self.data)
-        print 'item_count = ',item_count
-        print 'page_size',pagesize
         total_pages = ((item_count-1)//pagesize) +1
-        print 'total_pages = ',total_pages
 
         # Discard any extra remaining rows and return the control set.
         if (pageref-1) < 1:
