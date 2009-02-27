@@ -1,1 +1,2 @@
- * Add edge case handling to the CouchDBPager
+ * Make the List Pager work with Iterators
+ * Refactor webpaging, it should just be a generic paging utility and some load_request extensions in a 'restish' (environ?) module

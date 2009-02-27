@@ -1,4 +1,5 @@
 from pagingish.couchdb_pager import CouchDBSkipLimitViewPager, CouchDBViewPager
+from pagingish.list_pager import ListPager
 
 
 class Paging(object):
@@ -82,22 +83,17 @@ class Paging(object):
                 self._range_center is not None and \
                 self._range_right is not None
 
-class CouchDBPaging(Paging):
-    """
-    Basic next/prev paging. This is the recommended way of paging using CouchDB.
-    """
-    def __init__(self, view_func, view_name, default_page_size=10, **args):
-        self.pager = CouchDBViewPager(view_func, view_name, **args)
-        self.default_page_size = default_page_size
+
+class NextPrevPaging(Paging):
 
     def load_from_request(self, request):
         self.request = request
         page_ref = request.GET.get('page_ref')
-        page_size = get_integer_from_request(request, 'page_size', self.default_page_size)
-        self.load(page_ref, page_size)
+        default_page_size = get_integer_from_request(request, 'page_size', self.default_page_size)
+        self.load(page_ref, default_page_size)
 
-    def load(self, page_ref=None, page_size=None):
-        prev_ref, docs, next_ref, stats = self.pager.get(page_size, page_ref)
+    def load(self, page_ref=None, default_page_size=None):
+        prev_ref, docs, next_ref, stats = self.pager.get(default_page_size, page_ref)
         page_number = None
         total_pages = None
         item_count = None
@@ -105,30 +101,19 @@ class CouchDBPaging(Paging):
         range_center = None
         range_right = []
         
-        Paging.__init__(self, self.request, docs, page_number, total_pages, page_size, item_count, next_ref, prev_ref, range_left, range_center, range_right)
+        Paging.__init__(self, self.request, docs, page_number, total_pages, default_page_size, item_count, next_ref, prev_ref, range_left, range_center, range_right)
 
 
-class CouchDBSkipLimitPaging(Paging):
-    """
-    Paging with full statistics but using the skip attribute which is not recommended because of performance issues (full scans of indexes possibly needed)
-    """
-
-    def __init__(self, view_func, view_name, count_view_name, default_page_size=10,pages_per_side=2, **args):
-        assert 'limit' not in args
-        assert 'skip' not in args
-        self.pager = CouchDBSkipLimitViewPager(view_func, view_name, count_view_name, **args)
-        self.pages_per_side = pages_per_side
-        self.default_page_size = default_page_size
-        self.args = args
+class RangePaging(Paging):
 
     def load_from_request(self, request):
         self.request = request
         page_ref = get_integer_from_request(request, 'page_ref', 1)
-        page_size = get_integer_from_request(request, 'page_size', self.default_page_size)
-        self.load(page_ref, page_size)
+        default_page_size = get_integer_from_request(request, 'page_size', self.default_page_size)
+        self.load(page_ref, default_page_size)
 
-    def load(self, page_number=None, page_size=None):
-        prev_ref, docs, next_ref, stats = self.pager.get(page_size, page_number)
+    def load(self, page_number=None, default_page_size=None):
+        prev_ref, docs, next_ref, stats = self.pager.get(default_page_size, page_number)
         
         range_left = [] 
         range_right = [] 
@@ -172,7 +157,40 @@ class CouchDBSkipLimitPaging(Paging):
                 if position > 0:
                     range_right.append(range)
 
-        Paging.__init__(self, self.request, docs, page_number, stats['total_pages'], page_size, stats['item_count'], next_ref, prev_ref, range_left, range_center, range_right)
+        Paging.__init__(self, self.request, docs, page_number, stats['total_pages'], default_page_size, stats['item_count'], next_ref, prev_ref, range_left, range_center, range_right)
+
+
+class CouchDBPaging(NextPrevPaging):
+    """
+    Basic next/prev paging. This is the recommended way of paging using CouchDB.
+    """
+    def __init__(self, view_func, view_name, default_page_size=10, **args):
+        self.pager = CouchDBViewPager(view_func, view_name, **args)
+        self.default_page_size = default_page_size
+
+class CouchDBSkipLimitPaging(RangePaging):
+    """
+    Paging with full statistics but using the skip attribute which is not recommended because of performance issues (full scans of indexes possibly needed)
+    """
+
+    def __init__(self, view_func, view_name, count_view_name, default_page_size=10, pages_per_side=2, **args):
+        assert 'limit' not in args
+        assert 'skip' not in args
+        self.pager = CouchDBSkipLimitViewPager(view_func, view_name, count_view_name, **args)
+        self.pages_per_side = pages_per_side
+        self.default_page_size = default_page_size
+        self.args = args
+
+class ListPaging(RangePaging):
+    """
+    Paging with full statistics but using the skip attribute which is not recommended because of performance issues (full scans of indexes possibly needed)
+    """
+
+    def __init__(self, data, default_page_size=10, pages_per_side=2):
+        self.pager = ListPager(data)
+        self.pages_per_side = pages_per_side
+        self.default_page_size = default_page_size
+
 
 
 def get_integer_from_request(request, key, default):

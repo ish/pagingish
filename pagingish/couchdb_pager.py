@@ -1,4 +1,3 @@
-import time
 import couchdb
 import simplejson as json
 
