@@ -161,6 +161,7 @@ class CouchDBViewPager(object):
 
         return _encode_ref(prevref), rows, _encode_ref(nextref), {}
 
+
 def ref_from_doc(dir,doc):
     return {'direction': dir, 'startkey': doc.key, 'startkey_docid': doc.id}
 
@@ -219,7 +220,6 @@ class CouchDBSkipLimitViewPager(object):
         return prevref, docs, nextref, stats
 
 
-
 def _encode_ref(ref):
     if ref is None:
         return None
@@ -232,6 +232,4 @@ def _decode_ref(ref):
     if ref is None:
         return None
     return dict(zip(['direction', 'startkey', 'startkey_docid'], json.loads(ref)))
-
-
 
