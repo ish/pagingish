@@ -1,3 +1,4 @@
+import uuid
 from unittest import TestCase
 from createdata import create_items
 import couchdb
@@ -533,3 +534,60 @@ class TestCouchDBPager_alterlist_15items_withstartend(TestCase):
         del self.db['id-2']
         prev, rows, next, stats = p.get(5, prev)
         assert_page(1, prev, rows, next, stats, e5pp_15t_after_secondpass)
+
+
+class TestCouchDBPagerJumpRef(TestCase):
+
+    def setUp(self):
+        self.db_name = "pagingish-%s"%uuid.uuid4().hex
+        self.db = couchdb.Server().create(self.db_name)
+
+    def tearDown(self):
+        del couchdb.Server()[self.db_name]
+
+    def test_jumpref(self):
+        self.db['_design/test'] = {'views': {'test': {'map': 'function(doc) {emit(doc.letter+doc.letter, null);}'}}}
+        self.db.update([{'letter': letter} for letter in 'abcdefghijklmnopqrstuvwxyz'])
+        pager = CouchDBViewPager(self.db.view, 'test/test')
+        prev, items, next, stats = pager.get(5)
+        assert items[0].key == 'aa'
+        prev, items, next, stats = pager.get(5, CouchDBViewPager.jumpref('k'))
+        assert items[0].key == 'kk'
+        prev, items, next, stats = pager.get(5, prev)
+        assert items[0].key == 'ff'
+        prev, items, next, stats = pager.get(5, prev)
+        assert items[0].key == 'aa'
+        assert prev is None
+
+    def test_jumpref_pageback(self):
+        self.db['_design/test'] = {'views': {'test': {'map': 'function(doc) {emit(doc.letter, null);}'}}}
+        self.db.update([{'letter': 'a'} for i in range(100)])
+        self.db.update([{'letter': 'b'} for i in range(100)])
+        pager = CouchDBViewPager(self.db.view, 'test/test')
+        prev, items, next, stats = pager.get(5, CouchDBViewPager.jumpref('b'))
+        assert items[0].key == 'b'
+
+    def test_jumpref_start(self):
+        self.db['_design/test'] = {'views': {'test': {'map': 'function(doc) {emit(doc.letter+doc.letter, null);}'}}}
+        self.db.update([{'letter': letter} for letter in 'abcdefghijklmnopqrstuvwxyz'])
+        pager = CouchDBViewPager(self.db.view, 'test/test')
+        prev, items, next, stats = pager.get(5, CouchDBViewPager.jumpref('a'))
+        assert items[0].key == 'aa'
+        prev, items, next, stats = pager.get(5, CouchDBViewPager.jumpref('aa'))
+        assert items[0].key == 'aa'
+
+    def test_jumpref_exact(self):
+        # Tests that the jump key is skipped if it is in the view
+        self.db['_design/test'] = {'views': {'test': {'map': 'function(doc) {emit(doc.letter, null);}'}}}
+        self.db.update([{'letter': letter} for letter in 'abcdefghijklmnopqrstuvwxyz'])
+        pager = CouchDBViewPager(self.db.view, 'test/test')
+        prev, items, next, stats = pager.get(5)
+        assert items[0].key == 'a'
+        prev, items, next, stats = pager.get(5, CouchDBViewPager.jumpref('k'))
+        assert items[0].key == 'k'
+        prev, items, next, stats = pager.get(5, prev)
+        assert items[0].key == 'f'
+        prev, items, next, stats = pager.get(5, prev)
+        assert items[0].key == 'a'
+        assert prev is None
+

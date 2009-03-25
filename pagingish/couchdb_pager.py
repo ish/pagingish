@@ -4,6 +4,19 @@ import simplejson as json
 
 class CouchDBViewPager(object):
 
+    @classmethod
+    def jumpref(cls, startkey):
+        """
+        Create a pageref that will "jump" into the middle of a view but will
+        not affect the view results or further paging. Simply Pass the
+        resulting string as the pageref when calling get().
+
+        This is primarily useful for providing an index into a view, e.g. an
+        '0-9', 'A', 'B', ..., 'Z' index into a list of names although any value
+        jump key can be used.
+        """
+        return json.dumps(['jump', startkey])
+
     def __init__(self, view_func, view_name, **args):
         # We can't allow these, we need them to control paging correctly.
         assert 'limit' not in args
@@ -18,10 +31,16 @@ class CouchDBViewPager(object):
         # Decode the pageref
         pageref = _decode_ref(pageref)
 
+        # Turn a "jump" ref into a "next" ref by looking for the document
+        # before (in whatever direction) the jump ref key and creating the
+        # pageref from it.
+        if pageref and pageref['type'] == 'jump':
+            pageref = self._resolve_jump_ref(pageref)
+
         # Copy the args and replace/update with paging control args.
         args = dict(self.args)
         if pageref:
-            if pageref['direction'] == 'prev':
+            if pageref['type'] == 'prev':
                 # if we're going in the opposite to normal direction, reverse
                 # the data scan direction and use endkey instead of startkey
                 args['descending'] = not self.args.get('descending', False)
@@ -62,10 +81,10 @@ class CouchDBViewPager(object):
             # If we have a page reference document then we know we have
             # previous items. Strip this pageref doc from the rows once the
             # prev button has been built
-            if pageref['direction'] == 'next':
-                prevref = ref_from_doc('prev',rows[1])
+            if pageref['type'] == 'next':
+                prevref = _ref_from_doc('prev',rows[1])
             else:
-                nextref = ref_from_doc('next',rows[1])
+                nextref = _ref_from_doc('next',rows[1])
             rows = rows[1:]
 
 
@@ -79,10 +98,10 @@ class CouchDBViewPager(object):
             # pager that it needs to be clever and instead of doing a normal
             # page look up, do a reverse lookup from the end of the current
             # search
-            if pageref['direction'] == 'next':
-                prevref = {'direction': 'prev'}
+            if pageref['type'] == 'next':
+                prevref = {'type': 'prev'}
             else:
-                nextref = {'direction': 'next'}
+                nextref = {'type': 'next'}
             rows = rows[1:]
 
 
@@ -108,15 +127,15 @@ class CouchDBViewPager(object):
             revrows = list(self.view_func(self.view_name, **args))
             if len(revrows) >= 2:
                 if 'startkey' in pageref:
-                    if pageref['direction'] == 'next':
-                        prevref = ref_from_doc('prev',revref)
+                    if pageref['type'] == 'next':
+                        prevref = _ref_from_doc('prev',revref)
                     else:
-                        nextref = ref_from_doc('next',revref)
+                        nextref = _ref_from_doc('next',revref)
                 else:
-                    if pageref['direction'] == 'prev':
-                        prevref = ref_from_doc('prev',revref)
+                    if pageref['type'] == 'prev':
+                        prevref = _ref_from_doc('prev',revref)
                     else:
-                        nextref = ref_from_doc('next',revref)
+                        nextref = _ref_from_doc('next',revref)
 
         elif pageref and not rows:
             # no rows !!
@@ -138,32 +157,71 @@ class CouchDBViewPager(object):
             # which tells the pager to use the last page of results in this
             # special case
             if len(revrows) >= 1:
-                if pageref['direction'] == 'next':
-                    prevref = {'direction': 'prev'}
+                if pageref['type'] == 'next':
+                    prevref = {'type': 'prev'}
                 else:
-                    nextref = {'direction': 'next'}
+                    nextref = {'type': 'next'}
 
         # Find the ref document to move a page in the same direction as the
         # pageref's direction (default is 'next').
         if len(rows) > pagesize:
-            if pageref and pageref['direction'] == 'prev':
-                prevref = ref_from_doc('prev',rows[pagesize-1])
+            if pageref and pageref['type'] == 'prev':
+                prevref = _ref_from_doc('prev',rows[pagesize-1])
             else:
-                nextref = ref_from_doc('next',rows[pagesize-1])
+                nextref = _ref_from_doc('next',rows[pagesize-1])
 
 
         # Discard any extra remaining rows and return the control set.
         rows = rows[:pagesize]
 
         # Reverse the remaining rows if we're going backwards.
-        if pageref and pageref['direction'] == 'prev':
+        if pageref and pageref['type'] == 'prev':
             rows = rows[::-1]
 
         return _encode_ref(prevref), rows, _encode_ref(nextref), {}
 
+    def _resolve_jump_ref(self, jumpref):
+        """
+        Turn a jumpref into either a "next" pageref or None.
 
-def ref_from_doc(dir,doc):
-    return {'direction': dir, 'startkey': doc.key, 'startkey_docid': doc.id}
+        XXX The while loop can be removed once non-inclusive start keys are
+        supported in CouchDB.
+        """
+        args = dict(self.args)
+        args['descending'] = not args.get('descending', False)
+        args['startkey'] = jumpref['startkey']
+        args['limit'] = 5
+        while True:
+            rows = list(self.view_func(self.view_name, **args))
+            if not rows or (len(rows) == 1 and rows[0].key == jumpref['startkey']):
+                break
+            for row in rows:
+                if row.key != jumpref['startkey']:
+                    return _ref_from_doc('next', row)
+            args['startkey'] = row.key
+            args['startkey_docid'] = row.id
+
+
+def _ref_from_doc(dir,doc):
+    return {'type': dir, 'startkey': doc.key, 'startkey_docid': doc.id}
+
+
+def _encode_ref(ref):
+    if ref is None:
+        return None
+    if 'startkey' not in ref:
+        return json.dumps([ref['type']])
+    return json.dumps([ref['type'], ref['startkey'], ref['startkey_docid']])
+
+
+def _decode_ref(ref):
+    if ref is None:
+        return None
+    ref = json.loads(ref)
+    if ref[0] == 'jump':
+        return dict(zip(['type', 'startkey'], ref))
+    else:
+        return dict(zip(['type', 'startkey', 'startkey_docid'], ref))
 
 
 class CouchDBSkipLimitViewPager(object):
@@ -218,18 +276,4 @@ class CouchDBSkipLimitViewPager(object):
                  'item_count': item_count}
 
         return prevref, docs, nextref, stats
-
-
-def _encode_ref(ref):
-    if ref is None:
-        return None
-    if 'startkey' not in ref:
-        return json.dumps([ref['direction']])
-    return json.dumps([ref['direction'], ref['startkey'], ref['startkey_docid']])
-
-
-def _decode_ref(ref):
-    if ref is None:
-        return None
-    return dict(zip(['direction', 'startkey', 'startkey_docid'], json.loads(ref)))
 
