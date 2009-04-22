@@ -17,14 +17,16 @@ class CouchDBViewPager(object):
         """
         return _encode_list(['jump', _encode_key(startkey)])
 
-    def __init__(self, view_func, view_name, **args):
+    def __init__(self, view_func, view_name, view_args=None):
+        if view_args is None:
+            view_args = {}
         # We can't allow these, we need them to control paging correctly.
-        assert 'limit' not in args
-        assert 'startkey_docid' not in args
-        assert 'endkey_docid' not in args
+        assert 'limit' not in view_args
+        assert 'startkey_docid' not in view_args
+        assert 'endkey_docid' not in view_args
         self.view_func = view_func
         self.view_name = view_name
-        self.args = args
+        self.view_args = view_args
 
     def get(self, pagesize, pageref=None):
 
@@ -37,37 +39,37 @@ class CouchDBViewPager(object):
         if pageref and pageref['type'] == 'jump':
             pageref = self._resolve_jump_ref(pageref)
 
-        # Copy the args and replace/update with paging control args.
-        args = dict(self.args)
+        # Copy the view_args and replace/update with paging control view_args.
+        view_args = dict(self.view_args)
         if pageref:
             if pageref['type'] == 'prev':
                 # if we're going in the opposite to normal direction, reverse
                 # the data scan direction and use endkey instead of startkey
-                args['descending'] = not self.args.get('descending', False)
-                if 'startkey' in self.args:
-                    args['endkey'] = self.args.get('startkey')
+                view_args['descending'] = not self.view_args.get('descending', False)
+                if 'startkey' in self.view_args:
+                    view_args['endkey'] = self.view_args.get('startkey')
 
 
             if 'startkey' in pageref:
                 # if we have a startkey/startkey_docid in the pageref, then use it 
-                args['startkey'] = pageref['startkey']
+                view_args['startkey'] = pageref['startkey']
                 if 'startkey_docid' in pageref:
-                    args['startkey_docid'] = pageref['startkey_docid']
+                    view_args['startkey_docid'] = pageref['startkey_docid']
             else:
                 # else this is the special hack case where we are taking the
                 # last page of data by reversing the normal search
-                if 'endkey' in self.args:
-                    args['startkey'] = self.args['endkey']
-                if 'startkey' in self.args:
-                    args['endkey'] = self.args['startkey']
-                args['descending'] = not self.args.get('descending', False)
+                if 'endkey' in self.view_args:
+                    view_args['startkey'] = self.view_args['endkey']
+                if 'startkey' in self.view_args:
+                    view_args['endkey'] = self.view_args['startkey']
+                view_args['descending'] = not self.view_args.get('descending', False)
 
         # Try to get two extra rows to detect previous and next pages as
         # efficiently as possible.
-        args['limit'] = pagesize+2
+        view_args['limit'] = pagesize+2
 
         # Fetch the rows from the view_name.
-        rows = list(self.view_func(self.view_name, **args))
+        rows = list(self.view_func(self.view_name, **view_args))
 
         # Assume to ref documents by default.
         prevref = None
@@ -115,16 +117,16 @@ class CouchDBViewPager(object):
                 revref = rows[0]
             else:
                 revref = rows[-1]
-            args = dict(self.args)
+            view_args = dict(self.view_args)
             # If we're scanning backwards then the endkey must be swapped for the start key
-            if 'startkey' in args:
-                args['endkey'] = args['startkey']
+            if 'startkey' in view_args:
+                view_args['endkey'] = view_args['startkey']
 
-            args['startkey'] = revref.key
-            args['startkey_docid'] = revref.id
-            args['limit'] = 2
-            args['descending'] = not args.get('descending', False)
-            revrows = list(self.view_func(self.view_name, **args))
+            view_args['startkey'] = revref.key
+            view_args['startkey_docid'] = revref.id
+            view_args['limit'] = 2
+            view_args['descending'] = not view_args.get('descending', False)
+            revrows = list(self.view_func(self.view_name, **view_args))
             if len(revrows) >= 2:
                 if 'startkey' in pageref:
                     if pageref['type'] == 'next':
@@ -143,14 +145,14 @@ class CouchDBViewPager(object):
             # No data at all, but there might still be a previous page. 
             # Scan in the reverse direction to get the first item (clearing any
             # endkey to make sure we don't cut off our own results)
-            args = dict(self.args)
-            args['startkey'] = pageref['startkey']
-            args['startkey_docid'] = pageref['startkey_docid']
-            if 'endkey' in args:
-                del args['endkey']
-            args['limit'] = 1
-            args['descending'] = not args.get('descending', False)
-            revrows = list(self.view_func(self.view_name, **args))
+            view_args = dict(self.view_args)
+            view_args['startkey'] = pageref['startkey']
+            view_args['startkey_docid'] = pageref['startkey_docid']
+            if 'endkey' in view_args:
+                del view_args['endkey']
+            view_args['limit'] = 1
+            view_args['descending'] = not view_args.get('descending', False)
+            revrows = list(self.view_func(self.view_name, **view_args))
             # We have the same issue as in the 'only one row and pagref match'
             # case. We don't have a first item on the current page that we can
             # use as the start point for a previous page. Hence we do the hack
@@ -187,19 +189,19 @@ class CouchDBViewPager(object):
         XXX The while loop can be removed once non-inclusive start keys are
         supported in CouchDB.
         """
-        args = dict(self.args)
-        args['descending'] = not args.get('descending', False)
-        args['startkey'] = jumpref['startkey']
-        args['limit'] = 5
+        view_args = dict(self.view_args)
+        view_args['descending'] = not view_args.get('descending', False)
+        view_args['startkey'] = jumpref['startkey']
+        view_args['limit'] = 5
         while True:
-            rows = list(self.view_func(self.view_name, **args))
+            rows = list(self.view_func(self.view_name, **view_args))
             if not rows or (len(rows) == 1 and rows[0].key == jumpref['startkey']):
                 break
             for row in rows:
                 if row.key != jumpref['startkey']:
                     return _ref_from_doc('next', row)
-            args['startkey'] = row.key
-            args['startkey_docid'] = row.id
+            view_args['startkey'] = row.key
+            view_args['startkey_docid'] = row.id
 
 
 def _ref_from_doc(dir,doc):
@@ -261,15 +263,17 @@ def _decode_key(s):
 
 class CouchDBSkipLimitViewPager(object):
 
-    def __init__(self, view_func, view_name, count_view_name, **args):
+    def __init__(self, view_func, view_name, count_view_name, view_args=None):
+        if view_args is None:
+            view_args = {}
         # We can't allow these, we need them to control paging correctly.
-        assert 'limit' not in args
-        assert 'startkey_docid' not in args
-        assert 'endkey_docid' not in args
+        assert 'limit' not in view_args
+        assert 'startkey_docid' not in view_args
+        assert 'endkey_docid' not in view_args
         self.view_func = view_func
         self.view_name = view_name
         self.count_view_name = count_view_name
-        self.args = args
+        self.view_args = view_args
 
     def get(self, pagesize, pageref=None):
         try:
@@ -296,7 +300,7 @@ class CouchDBSkipLimitViewPager(object):
             page_number == 1
         
         skip = (page_number-1)*pagesize
-        docs = list(self.view_func(self.view_name, skip=skip, limit=pagesize, **self.args))
+        docs = list(self.view_func(self.view_name, skip=skip, limit=pagesize, **self.view_args))
 
         # next and prev pagerefs (None for not available)
         nextref = None

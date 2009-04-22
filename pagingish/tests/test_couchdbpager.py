@@ -273,7 +273,7 @@ class TestCouchDBPager_alterlist_10items(TestCase):
     def test_remove_prevref_reverse(self):
         e5pp_10t_before = [ [9,8,7,6,5], [4,3,2,1,0] ]
         e5pp_10t_after = [ [9,8,7,6], [4,3,2,1,0] ]
-        p = CouchDBViewPager(self.db.view, '%s/all'%model_type, descending=True)
+        p = CouchDBViewPager(self.db.view, '%s/all'%model_type, dict(descending=True))
         prev, rows, next, stats = p.get(5, None)
         assert_page(1, prev, rows, next, stats, e5pp_10t_before)
         del self.db['id-5']
@@ -298,7 +298,7 @@ class TestCouchDBPager_alterlist_10items(TestCase):
         e5pp_10t_before = [ [9,8,7,6,5], [4,3,2,1,0] ]
         e5pp_10t_after = [ [9,8,7,6,5], [] ]
         e5pp_10t_after_secondpass = [ [9,8,7,6,5] ]
-        p = CouchDBViewPager(self.db.view, '%s/all'%model_type, descending=True)
+        p = CouchDBViewPager(self.db.view, '%s/all'%model_type, dict(descending=True))
         prev, rows, next, stats = p.get(5, None)
         assert_page(1, prev, rows, next, stats, e5pp_10t_before)
         for i in xrange(0,5):
@@ -327,7 +327,7 @@ class TestCouchDBPager_alterlist_10items(TestCase):
     def test_remove_alldata_reversed(self):
         e5pp_10t_before = [ [9,8,7,6,5], [4,3,2,1,0] ]
         e5pp_10t_after = [ [] ]
-        p = CouchDBViewPager(self.db.view, '%s/all'%model_type, descending=True)
+        p = CouchDBViewPager(self.db.view, '%s/all'%model_type, dict(descending=True))
         prev, rows, next, stats = p.get(5, None)
         assert_page(1, prev, rows, next, stats, e5pp_10t_before)
         for i in xrange(0,10):
@@ -394,7 +394,7 @@ class TestCouchDBPager_10items_withstartend(TestCase):
         create_view(self.db, model_type,'count',map_fun, reduce_fun)
 
     def test_roundtrip_5pp(self):
-        p = CouchDBViewPager(self.db.view, '%s/all'%model_type, startkey=5, endkey=14)
+        p = CouchDBViewPager(self.db.view, '%s/all'%model_type, dict(startkey=5, endkey=14))
         expecteds = [ [5,6,7,8,9],[10,11,12,13,14] ]
         prev, rows, next, stats = p.get(5, None)
         assert_page(1,prev, rows, next, stats, expecteds)
@@ -404,7 +404,7 @@ class TestCouchDBPager_10items_withstartend(TestCase):
         assert_page(1,prev, rows, next, stats, expecteds)
 
     def test_roundtrip_5pp_reversed(self):
-        p = CouchDBViewPager(self.db.view, '%s/all'%model_type, startkey=14, endkey=5, descending=True)
+        p = CouchDBViewPager(self.db.view, '%s/all'%model_type, dict(startkey=14, endkey=5, descending=True))
         expecteds = [ [14,13,12,11,10],[9,8,7,6,5] ]
         prev, rows, next, stats = p.get(5, None)
         assert_page(1,prev, rows, next, stats, expecteds)
@@ -428,7 +428,7 @@ class TestCouchDBPager_alterlist_15items_withstartend(TestCase):
     def test_remove_prevref(self):
         e5pp_15t_before = [ [2,3,4,5,6], [7,8,9,10,11], [12] ]
         e5pp_15t_after = [ [2,3,4,5], [7,8,9,10,11], [12] ]
-        p = CouchDBViewPager(self.db.view, '%s/all'%model_type, startkey=2, endkey=12)
+        p = CouchDBViewPager(self.db.view, '%s/all'%model_type, dict(startkey=2, endkey=12))
         prev, rows, next, stats = p.get(5, None)
         assert_page(1, prev, rows, next, stats, e5pp_15t_before)
         del self.db['id-6']
@@ -445,7 +445,7 @@ class TestCouchDBPager_alterlist_15items_withstartend(TestCase):
     def test_remove_prevref_reversed(self):
         e5pp_15t_before = [ [12,11,10,9,8],[7,6,5,4,3],[2]]
         e5pp_15t_after = [ [12,11,10,9],[7,6,5,4,3],[2]]
-        p = CouchDBViewPager(self.db.view, '%s/all'%model_type, startkey=12, endkey=2, descending=True)
+        p = CouchDBViewPager(self.db.view, '%s/all'%model_type, dict(startkey=12, endkey=2, descending=True))
         prev, rows, next, stats = p.get(5, None)
         assert_page(1, prev, rows, next, stats, e5pp_15t_before)
         del self.db['id-8']
@@ -462,7 +462,7 @@ class TestCouchDBPager_alterlist_15items_withstartend(TestCase):
         e5pp_15t_before = [ [2,3,4,5,6], [7,8,9,10,11], [12] ]
         e5pp_15t_after = [ [2,3,4,5], [] ]
         e5pp_15t_after_secondpass = [ [2,3,4,5] ]
-        p = CouchDBViewPager(self.db.view, '%s/all'%model_type, startkey=2, endkey=12)
+        p = CouchDBViewPager(self.db.view, '%s/all'%model_type, dict(startkey=2, endkey=12))
         prev, rows, next, stats = p.get(5, None)
         assert_page(1, prev, rows, next, stats, e5pp_15t_before)
         for i in xrange(6,13):
@@ -479,7 +479,7 @@ class TestCouchDBPager_alterlist_15items_withstartend(TestCase):
         e5pp_15t_after = [ [2,3,4,5,6], [7,8,9,10], [] ]
         e5pp_15t_after_secondpass = [ [2,3,4,5] ]
         e5pp_15t_after_lastpass = [ [2,3,4,5] ]
-        p = CouchDBViewPager(self.db.view, '%s/all'%model_type, startkey=2, endkey=12)
+        p = CouchDBViewPager(self.db.view, '%s/all'%model_type, dict(startkey=2, endkey=12))
         prev, rows, next, stats = p.get(5, None)
         assert_page(1, prev, rows, next, stats, e5pp_15t_before)
 
@@ -507,7 +507,7 @@ class TestCouchDBPager_alterlist_15items_withstartend(TestCase):
         e5pp_15t_after1 = [ [2,3,4,5,6], [7,8,9,10,11], [] ]
         e5pp_15t_after2 = [ [2,3,4,5], [7,8,9,10,11] ]
         e5pp_15t_after_secondpass = [ [], [7,8,9,10,11] ]
-        p = CouchDBViewPager(self.db.view, '%s/all'%model_type, startkey=2, endkey=12)
+        p = CouchDBViewPager(self.db.view, '%s/all'%model_type, dict(startkey=2, endkey=12))
         prev, rows, next, stats = p.get(5, None)
         assert_page(1, prev, rows, next, stats, e5pp_15t_before)
 
