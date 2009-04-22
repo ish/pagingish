@@ -1,4 +1,4 @@
-import couchdb
+import base64
 import simplejson as json
 
 
@@ -15,7 +15,7 @@ class CouchDBViewPager(object):
         '0-9', 'A', 'B', ..., 'Z' index into a list of names although any value
         jump key can be used.
         """
-        return json.dumps(['jump', startkey])
+        return _encode_list(['jump', _encode_key(startkey)])
 
     def __init__(self, view_func, view_name, **args):
         # We can't allow these, we need them to control paging correctly.
@@ -210,18 +210,53 @@ def _encode_ref(ref):
     if ref is None:
         return None
     if 'startkey' not in ref:
-        return json.dumps([ref['type']])
-    return json.dumps([ref['type'], ref['startkey'], ref['startkey_docid']])
+        return _encode_list([ref['type']])
+    return _encode_list([ref['type'], _encode_key(ref['startkey']), ref['startkey_docid']])
 
 
 def _decode_ref(ref):
     if ref is None:
         return None
-    ref = json.loads(ref)
+    ref = _decode_list(ref)
     if ref[0] == 'jump':
-        return dict(zip(['type', 'startkey'], ref))
+        return dict(zip(['type', 'startkey'], [ref[0], _decode_key(ref[1])]))
     else:
-        return dict(zip(['type', 'startkey', 'startkey_docid'], ref))
+        d = dict(zip(['type', 'startkey', 'startkey_docid'], ref))
+        if 'startkey' in d:
+            d['startkey'] = _decode_key(d['startkey'])
+        return d
+
+
+def _encode_list(l, delimeter='|'):
+    return delimeter.join(i.replace(delimeter, '\\'+delimeter) for i in l)
+
+
+def _decode_list(s, delimeter='|'):
+    result = []
+    for bit in s.split('\\'+delimeter):
+        if delimeter not in bit:
+            if result:
+                result[-1] = delimeter.join([result[-1], bit])
+            else:
+                result.append(bit)
+        else:
+            for idx, i in enumerate(bit.split(delimeter)):
+                if idx == 0:
+                    if result:
+                        result[-1] = delimeter.join([result[-1], i])
+                    else:
+                        result.append(i)
+                else:
+                    result.append(i)
+    return result
+
+
+def _encode_key(key):
+    return base64.b64encode(json.dumps(key))
+
+
+def _decode_key(s):
+    return json.loads(base64.b64decode(s))
 
 
 class CouchDBSkipLimitViewPager(object):
