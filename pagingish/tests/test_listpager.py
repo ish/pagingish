@@ -3,15 +3,8 @@ from unittest import TestCase
 from pagingish.list_pager import ListPager
 
 
-def get_pagenumber(pagesize, itemcount):
-    if item_count == 0:
-        return 1
-    return 1+ (itemcount-1)/pagesize
-
 def sequence_generator(num):
     return xrange(num)
-
-
 
 
 def assert_page(page, prev, rows, next, stats, expecteds):

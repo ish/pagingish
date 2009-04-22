@@ -1,9 +1,8 @@
 from unittest import TestCase
 from createdata import create_items
-import couchdb
 from couchdb.design import ViewDefinition
 
-from pagingish.couchdb_pager import CouchDBViewPager, CouchDBSkipLimitViewPager
+from pagingish.couchdb_pager import CouchDBSkipLimitViewPager
 
 dbname = 'test-paging'
 model_type = 'test'
@@ -13,10 +12,6 @@ def create_view(db, design_doc, name, map_fun, reduce_fun=None):
     view.get_doc(db)
     view.sync(db)
 
-def get_pagenumber(pagesize, itemcount):
-    if item_count == 0:
-        return 1
-    return 1+ (itemcount-1)/pagesize
 
 def sequence_generator(num):
     for n in xrange(num):
@@ -24,8 +19,6 @@ def sequence_generator(num):
                 'model_type': model_type,
                 'num': n}
         yield data
-
-
 
 
 def assert_page(page, prev, rows, next, stats, expecteds):

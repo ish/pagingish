@@ -1,9 +1,6 @@
-import simplejson as json
-
 class ListPager(object):
 
     def __init__(self, data):
-        # We can't allow these, we need them to control paging correctly.
         self.data = list(data)
 
     def get(self, pagesize, pageref=None):
@@ -11,6 +8,7 @@ class ListPager(object):
         # Decode the pageref
         if pageref is None:
             pageref = 1
+
         # Get some stats
         item_count = len(self.data)
         total_pages = ((item_count-1)//pagesize) +1
@@ -33,8 +31,4 @@ class ListPager(object):
         end = pagesize*pageref
 
         return prevref, self.data[start:end], nextref, stats 
-
-
-
-
 

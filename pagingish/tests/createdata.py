@@ -2,7 +2,6 @@
 from jsonish import pythonjson as json
 import couchdb
 from optparse import OptionParser
-import os
 
 host = 'http://localhost:5984'
 

@@ -168,6 +168,7 @@ class CouchDBPaging(NextPrevPaging):
         self.pager = CouchDBViewPager(view_func, view_name, **args)
         self.default_page_size = default_page_size
 
+
 class CouchDBSkipLimitPaging(RangePaging):
     """
     Paging with full statistics but using the skip attribute which is not recommended because of performance issues (full scans of indexes possibly needed)
@@ -181,6 +182,7 @@ class CouchDBSkipLimitPaging(RangePaging):
         self.default_page_size = default_page_size
         self.args = args
 
+
 class ListPaging(RangePaging):
     """
     Paging with full statistics but using the skip attribute which is not recommended because of performance issues (full scans of indexes possibly needed)
@@ -192,10 +194,10 @@ class ListPaging(RangePaging):
         self.default_page_size = default_page_size
 
 
-
 def get_integer_from_request(request, key, default):
     value = request.GET.get(key, default)
     try:
         return int(value)
     except (ValueError, TypeError):
         return default
+
