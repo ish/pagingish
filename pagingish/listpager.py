@@ -4,7 +4,7 @@ class Pager(object):
         self.data = list(data)
 
     def get(self, pagesize, pageref=None):
-        # Decode the pageref
+        # Decode the pageref, defaulting to page 1
         if pageref is None:
             pageref = 1
         else:
@@ -18,12 +18,12 @@ class Pager(object):
         if (pageref-1) < 1:
             prevref = None
         else:
-            prevref = pageref-1
+            prevref = unicode(pageref-1)
 
         if (pageref+1) > total_pages:
             nextref = None
         else:
-            nextref = pageref+1
+            nextref = unicode(pageref+1)
 
         # Get stats
         stats = {'item_count': item_count, 'total_pages': total_pages, 'page_size': pagesize}
