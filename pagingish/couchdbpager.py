@@ -2,7 +2,7 @@ import base64
 import simplejson as json
 
 
-class CouchDBViewPager(object):
+class Pager(object):
 
     @classmethod
     def jumpref(cls, startkey):
@@ -180,7 +180,7 @@ class CouchDBViewPager(object):
         if pageref and pageref['type'] == 'prev':
             rows = rows[::-1]
 
-        return _encode_ref(prevref), rows, _encode_ref(nextref), {}
+        return {'prev': _encode_ref(prevref), 'items': rows, 'next': _encode_ref(nextref), 'stats': {'page_size':pagesize}}
 
     def _resolve_jump_ref(self, jumpref):
         """
@@ -261,7 +261,7 @@ def _decode_key(s):
     return json.loads(base64.b64decode(s))
 
 
-class CouchDBSkipLimitViewPager(object):
+class SkipLimitPager(object):
 
     def __init__(self, view_func, view_name, count_view_name, view_args=None):
         if view_args is None:
@@ -312,7 +312,8 @@ class CouchDBSkipLimitViewPager(object):
 
         stats = {'page_number': page_number,
                  'total_pages': total_pages,
-                 'item_count': item_count}
+                 'item_count': item_count,
+                 'page_size': pagesize}
 
-        return prevref, docs, nextref, stats
+        return {'prev':prevref, 'items': docs, 'next': nextref, 'stats': stats}
 

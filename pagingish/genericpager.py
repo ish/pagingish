@@ -29,5 +29,5 @@ class SkipLimitPager(object):
         if len(items) > pagesize:
             next = unicode(pagenum+1)
         # Return result tuple.
-        return prev, items[:pagesize], next, None
+        return {'prev': prev, 'items': items[:pagesize], 'next': next, 'stats': {'page_size': pagesize}}
 

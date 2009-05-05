@@ -1,13 +1,14 @@
-class ListPager(object):
+class Pager(object):
 
     def __init__(self, data):
         self.data = list(data)
 
     def get(self, pagesize, pageref=None):
-
         # Decode the pageref
         if pageref is None:
             pageref = 1
+        else:
+            pageref = int(pageref)
 
         # Get some stats
         item_count = len(self.data)
@@ -25,10 +26,10 @@ class ListPager(object):
             nextref = pageref+1
 
         # Get stats
-        stats = {'item_count': item_count, 'total_pages': total_pages}
+        stats = {'item_count': item_count, 'total_pages': total_pages, 'page_size': pagesize}
 
         start = pagesize*(pageref-1)
         end = pagesize*pageref
 
-        return prevref, self.data[start:end], nextref, stats 
+        return {'prev': prevref, 'items': self.data[start:end], 'next': nextref, 'stats': stats}
 

@@ -2,7 +2,7 @@ from unittest import TestCase
 from createdata import create_items
 from couchdb.design import ViewDefinition
 
-from pagingish.couchdb_pager import CouchDBSkipLimitViewPager
+from pagingish.couchdbpager import SkipLimitPager
 
 dbname = 'test-paging'
 model_type = 'test'
@@ -59,6 +59,10 @@ def assert_page(page, prev, rows, next, stats, expecteds):
 e5pp_10t = [ [0,1,2,3,4], [5,6,7,8,9] ]
 e4pp_10t = [ [0,1,2,3], [4,5,6,7], [8,9] ]
 
+def t(d):
+    # tuplify paging dict (func sig changed and rewriting everything was going to be painful)
+    return  d['prev'], d['items'], d['next'], d['stats']
+
 class TestCouchDBPager_10items(TestCase):
 
     def setUp(self):
@@ -69,51 +73,51 @@ class TestCouchDBPager_10items(TestCase):
         create_view(self.db, model_type,'count',map_fun, reduce_fun)
 
     def test_roundtrip_5pp(self):
-        p = CouchDBSkipLimitViewPager(self.db.view, '%s/all'%model_type,'%s/count'%model_type)
+        p = SkipLimitPager(self.db.view, '%s/all'%model_type,'%s/count'%model_type)
         # Go forward and back the whole way, 5 per page
-        prev, rows, next, stats = p.get(5, None)
+        prev, rows, next, stats = t(p.get(5, None))
         assert_page(1,prev, rows, next, stats, e5pp_10t)
-        prev, rows, next, stats = p.get(5, next)
+        prev, rows, next, stats = t(p.get(5, next))
         assert_page(2,prev, rows, next, stats, e5pp_10t)
-        prev, rows, next, stats = p.get(5, prev)
+        prev, rows, next, stats = t(p.get(5, prev))
         assert_page(1,prev, rows, next, stats, e5pp_10t)
 
 
     def test_roundtrip_4pp(self):
-        p = CouchDBSkipLimitViewPager(self.db.view, '%s/all'%model_type,'%s/count'%model_type)
+        p = SkipLimitPager(self.db.view, '%s/all'%model_type,'%s/count'%model_type)
         # Go forward and back the whole way, 4 per page
-        prev, rows, next, stats = p.get(4, None)
+        prev, rows, next, stats = t(p.get(4, None))
         assert_page(1,prev, rows, next, stats, e4pp_10t)
-        prev, rows, next, stats = p.get(4, next)
+        prev, rows, next, stats = t(p.get(4, next))
         assert_page(2, prev, rows, next, stats, e4pp_10t)
-        prev, rows, next, stats = p.get(4, next)
+        prev, rows, next, stats = t(p.get(4, next))
         assert_page(3, prev, rows, next, stats, e4pp_10t)
-        prev, rows, next, stats = p.get(4, prev)
+        prev, rows, next, stats = t(p.get(4, prev))
         assert_page(2, prev, rows, next, stats, e4pp_10t)
-        prev, rows, next, stats = p.get(4, prev)
+        prev, rows, next, stats = t(p.get(4, prev))
         assert_page(1, prev, rows, next, stats, e4pp_10t)
 
     def test_upone_downone_4pp(self):
-        p = CouchDBSkipLimitViewPager(self.db.view, '%s/all'%model_type,'%s/count'%model_type)
+        p = SkipLimitPager(self.db.view, '%s/all'%model_type,'%s/count'%model_type)
         # got forward and back one page, 4 per page
-        prev, rows, next, stats = p.get(4, None)
+        prev, rows, next, stats = t(p.get(4, None))
         assert_page(1, prev, rows, next, stats, e4pp_10t)
-        prev, rows, next, stats = p.get(4, next)
+        prev, rows, next, stats = t(p.get(4, next))
         assert_page(2, prev, rows, next, stats, e4pp_10t)
-        prev, rows, next, stats = p.get(4, prev)
+        prev, rows, next, stats = t(p.get(4, prev))
         assert_page(1, prev, rows, next, stats, e4pp_10t)
 
     def test_prev_at_start_4pp(self):
-        p = CouchDBSkipLimitViewPager(self.db.view, '%s/all'%model_type,'%s/count'%model_type)
+        p = SkipLimitPager(self.db.view, '%s/all'%model_type,'%s/count'%model_type)
         # got forward and back one page, 4 per page
-        prev, rows, next, stats = p.get(4, None)
+        prev, rows, next, stats = t(p.get(4, None))
         assert_page(1, prev, rows, next, stats, e4pp_10t)
-        prev, rows, next, stats = p.get(4, next)
+        prev, rows, next, stats = t(p.get(4, next))
         assert_page(2, prev, rows, next, stats, e4pp_10t)
-        prev, rows, next, stats = p.get(4, prev)
+        prev, rows, next, stats = t(p.get(4, prev))
         assert_page(1, prev, rows, next, stats, e4pp_10t)
         # Check that using prev again doesn't break
-        prev, rows, next, stats = p.get(4, prev)
+        prev, rows, next, stats = t(p.get(4, prev))
         assert_page(1, prev, rows, next, stats, e4pp_10t)
 
 # 5 items (n per page)
@@ -131,62 +135,62 @@ class TestCouchDBPager_5items(TestCase):
         create_view(self.db, model_type,'count',map_fun, reduce_fun)
 
     def test_roundtrip_5pp(self):
-        p = CouchDBSkipLimitViewPager(self.db.view, '%s/all'%model_type,'%s/count'%model_type)
+        p = SkipLimitPager(self.db.view, '%s/all'%model_type,'%s/count'%model_type)
         # Go forward and back the whole way, 5 per page
-        prev, rows, next, stats = p.get(5, None)
+        prev, rows, next, stats = t(p.get(5, None))
         assert_page(1, prev, rows, next, stats, e5pp_5t)
 
     def test_roundtrip_4pp(self):
-        p = CouchDBSkipLimitViewPager(self.db.view, '%s/all'%model_type,'%s/count'%model_type)
+        p = SkipLimitPager(self.db.view, '%s/all'%model_type,'%s/count'%model_type)
         # Go forward and back the whole way, 4 per page
-        prev, rows, next, stats = p.get(4, None)
+        prev, rows, next, stats = t(p.get(4, None))
         assert_page(1, prev, rows, next, stats, e4pp_5t)
-        prev, rows, next, stats = p.get(4, next)
+        prev, rows, next, stats = t(p.get(4, next))
         assert_page(2, prev, rows, next, stats, e4pp_5t)
-        prev, rows, next, stats = p.get(4, prev)
+        prev, rows, next, stats = t(p.get(4, prev))
         assert_page(1, prev, rows, next, stats, e4pp_5t)
 
     def test_prev_at_start_4pp(self):
-        p = CouchDBSkipLimitViewPager(self.db.view, '%s/all'%model_type,'%s/count'%model_type)
+        p = SkipLimitPager(self.db.view, '%s/all'%model_type,'%s/count'%model_type)
         # Check that using prev again doesn't break
-        prev, rows, next, stats = p.get(4, None)
-        prev, rows, next, stats = p.get(4, next)
-        prev, rows, next, stats = p.get(4, prev)
-        prev, rows, next, stats = p.get(4, prev)
+        prev, rows, next, stats = t(p.get(4, None))
+        prev, rows, next, stats = t(p.get(4, next))
+        prev, rows, next, stats = t(p.get(4, prev))
+        prev, rows, next, stats = t(p.get(4, prev))
         assert_page(1, prev, rows, next, stats, e4pp_5t)
         
     def test_next_at_end_4pp(self):
-        p = CouchDBSkipLimitViewPager(self.db.view, '%s/all'%model_type,'%s/count'%model_type)
+        p = SkipLimitPager(self.db.view, '%s/all'%model_type,'%s/count'%model_type)
         # Check that using prev again doesn't break
-        prev, rows, next, stats = p.get(4, None)
-        prev, rows, next, stats = p.get(4, next)
-        prev, rows, next, stats = p.get(4, next)
+        prev, rows, next, stats = t(p.get(4, None))
+        prev, rows, next, stats = t(p.get(4, next))
+        prev, rows, next, stats = t(p.get(4, next))
         assert_page(1, prev, rows, next, stats, e4pp_5t)
        
     def test_roundtrip_6pp(self):
-        p = CouchDBSkipLimitViewPager(self.db.view, '%s/all'%model_type,'%s/count'%model_type)
+        p = SkipLimitPager(self.db.view, '%s/all'%model_type,'%s/count'%model_type)
         # Go forward and back the whole way, 5 per page
-        prev, rows, next, stats = p.get(6, None)
+        prev, rows, next, stats = t(p.get(6, None))
         assert_page(1, prev, rows, next, stats, e6pp_5t)
-        prev, rows, next, stats = p.get(6, next)
+        prev, rows, next, stats = t(p.get(6, next))
         assert_page(1, prev, rows, next, stats, e6pp_5t)
-        prev, rows, next, stats = p.get(6, prev)
+        prev, rows, next, stats = t(p.get(6, prev))
         assert_page(1, prev, rows, next, stats, e6pp_5t)
 
     def test_prev_at_start_6pp(self):
-        p = CouchDBSkipLimitViewPager(self.db.view, '%s/all'%model_type,'%s/count'%model_type)
+        p = SkipLimitPager(self.db.view, '%s/all'%model_type,'%s/count'%model_type)
         # Go forward and back the whole way, 5 per page
-        prev, rows, next, stats = p.get(6, None)
+        prev, rows, next, stats = t(p.get(6, None))
         assert_page(1, prev, rows, next, stats, e6pp_5t)
-        prev, rows, next, stats = p.get(6, prev)
+        prev, rows, next, stats = t(p.get(6, prev))
         assert_page(1, prev, rows, next, stats, e6pp_5t)
 
     def test_next_at_end_6pp(self):
-        p = CouchDBSkipLimitViewPager(self.db.view, '%s/all'%model_type,'%s/count'%model_type)
+        p = SkipLimitPager(self.db.view, '%s/all'%model_type,'%s/count'%model_type)
         # Go forward and back the whole way, 5 per page
-        prev, rows, next, stats = p.get(6, None)
+        prev, rows, next, stats = t(p.get(6, None))
         assert_page(1, prev, rows, next, stats, e6pp_5t)
-        prev, rows, next, stats = p.get(6, next)
+        prev, rows, next, stats = t(p.get(6, next))
         assert_page(1, prev, rows, next, stats, e6pp_5t)
 
 # 5 items (n per page)
@@ -202,23 +206,23 @@ class TestCouchDBPager_1items(TestCase):
         create_view(self.db, model_type,'count',map_fun, reduce_fun)
 
     def test_roundtrip_5pp(self):
-        p = CouchDBSkipLimitViewPager(self.db.view, '%s/all'%model_type,'%s/count'%model_type)
+        p = SkipLimitPager(self.db.view, '%s/all'%model_type,'%s/count'%model_type)
         # Go forward and back the whole way, 5 per page
-        prev, rows, next, stats = p.get(5, None)
+        prev, rows, next, stats = t(p.get(5, None))
         assert_page(1, prev, rows, next, stats, e5pp_1t)
 
     def test_next_at_end_5pp(self):
-        p = CouchDBSkipLimitViewPager(self.db.view, '%s/all'%model_type,'%s/count'%model_type)
+        p = SkipLimitPager(self.db.view, '%s/all'%model_type,'%s/count'%model_type)
         # Go forward and back the whole way, 5 per page
-        prev, rows, next, stats = p.get(5, None)
-        prev, rows, next, stats = p.get(5, next)
+        prev, rows, next, stats = t(p.get(5, None))
+        prev, rows, next, stats = t(p.get(5, next))
         assert_page(1, prev, rows, next, stats, e5pp_1t)
 
     def test_prev_at_start_5pp(self):
-        p = CouchDBSkipLimitViewPager(self.db.view, '%s/all'%model_type,'%s/count'%model_type)
+        p = SkipLimitPager(self.db.view, '%s/all'%model_type,'%s/count'%model_type)
         # Go forward and back the whole way, 5 per page
-        prev, rows, next, stats = p.get(5, None)
-        prev, rows, next, stats = p.get(5, prev)
+        prev, rows, next, stats = t(p.get(5, None))
+        prev, rows, next, stats = t(p.get(5, prev))
         assert_page(1, prev, rows, next, stats, e5pp_1t)
 
 # 5 items (n per page)
@@ -234,23 +238,23 @@ class TestCouchDBPager_0items(TestCase):
         create_view(self.db, model_type,'count',map_fun, reduce_fun)
 
     def test_roundtrip_5pp(self):
-        p = CouchDBSkipLimitViewPager(self.db.view, '%s/all'%model_type,'%s/count'%model_type)
+        p = SkipLimitPager(self.db.view, '%s/all'%model_type,'%s/count'%model_type)
         # Go forward and back the whole way, 5 per page
-        prev, rows, next, stats = p.get(5, None)
+        prev, rows, next, stats = t(p.get(5, None))
         assert_page(1, prev, rows, next, stats, e5pp_0t)
 
     def test_next_at_end_5pp(self):
-        p = CouchDBSkipLimitViewPager(self.db.view, '%s/all'%model_type,'%s/count'%model_type)
+        p = SkipLimitPager(self.db.view, '%s/all'%model_type,'%s/count'%model_type)
         # Go forward and back the whole way, 5 per page
-        prev, rows, next, stats = p.get(5, None)
-        prev, rows, next, stats = p.get(5, next)
+        prev, rows, next, stats = t(p.get(5, None))
+        prev, rows, next, stats = t(p.get(5, next))
         assert_page(1, prev, rows, next, stats, e5pp_0t)
 
     def test_prev_at_start_5pp(self):
-        p = CouchDBSkipLimitViewPager(self.db.view, '%s/all'%model_type,'%s/count'%model_type)
+        p = SkipLimitPager(self.db.view, '%s/all'%model_type,'%s/count'%model_type)
         # Go forward and back the whole way, 5 per page
-        prev, rows, next, stats = p.get(5, None)
-        prev, rows, next, stats = p.get(5, prev)
+        prev, rows, next, stats = t(p.get(5, None))
+        prev, rows, next, stats = t(p.get(5, prev))
         assert_page(1, prev, rows, next, stats, e5pp_0t)
 
 # 10 items (n per page)
@@ -268,22 +272,22 @@ class TestCouchDBPager_alterlist_10items(TestCase):
         e5pp_10t_before = [ [0,1,2,3,4], [5,6,7,8,9] ]
         # Because we're using skiplimit, the next page will start on 6 if id-4 is deleted
         e5pp_10t_after = [ [0,1,2,3,5], [6,7,8,9] ]
-        p = CouchDBSkipLimitViewPager(self.db.view, '%s/all'%model_type,'%s/count'%model_type)
-        prev, rows, next, stats = p.get(5, None)
+        p = SkipLimitPager(self.db.view, '%s/all'%model_type,'%s/count'%model_type)
+        prev, rows, next, stats = t(p.get(5, None))
         assert_page(1, prev, rows, next, stats, e5pp_10t_before)
         del self.db['id-4']
-        prev, rows, next, stats = p.get(5, next)
+        prev, rows, next, stats = t(p.get(5, next))
         assert_page(2, prev, rows, next, stats, e5pp_10t_after)
 
     def test_remove_whole_next_page(self):
         e5pp_10t_before = [ [0,1,2,3,4], [5,6,7,8,9] ]
         # Because we're using skiplimit, the next page will start on 6 if id-4 is deleted
         e5pp_10t_after = [ [0,1,2,3,4], ]
-        p = CouchDBSkipLimitViewPager(self.db.view, '%s/all'%model_type,'%s/count'%model_type)
-        prev, rows, next, stats = p.get(5, None)
+        p = SkipLimitPager(self.db.view, '%s/all'%model_type,'%s/count'%model_type)
+        prev, rows, next, stats = t(p.get(5, None))
         assert_page(1, prev, rows, next, stats, e5pp_10t_before)
         for i in xrange(5,10):
             del self.db['id-%s'%i]
-        prev, rows, next, stats = p.get(5, next)
+        prev, rows, next, stats = t(p.get(5, next))
         assert_page(2, prev, rows, next, stats, e5pp_10t_after)
 
