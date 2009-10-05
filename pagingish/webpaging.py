@@ -1,6 +1,6 @@
 from pagingish import couchdbpager, genericpager, listpager
 
-DEFAULT_PAGES_PER_SIDE = 3
+DEFAULT_PAGES_PER_SIDE = 2
 DEFAULT_PAGE_SIZE = 25
 
 class Paging(object):
@@ -17,7 +17,7 @@ class Paging(object):
         self._next_ref = paging_args.get('next')
 
         stats = paging_args.get('stats',{})
-        self._page_number = stats.get('page_number')
+        self._page_number = stats.get('page_number',1)
         self._total_pages = stats.get('total_pages')
         self._item_count = stats.get('item_count')
         self._page_size = stats.get('page_size')
