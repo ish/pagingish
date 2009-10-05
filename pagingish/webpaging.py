@@ -1,4 +1,5 @@
 from pagingish import couchdbpager, genericpager, listpager
+from restish import url
 
 DEFAULT_PAGES_PER_SIDE = 2
 DEFAULT_PAGE_SIZE = 25
@@ -8,7 +9,11 @@ class Paging(object):
     Interface for web properties
     """
 
-    def __init__(self, request, paging_args):
+    def __init__(self, request, paging_args, base_path=None):
+        if base_path:
+            self.base_path = url.URL(base_path)
+        else:
+            self.base_path = request.path_qs
         self.request = request
         if paging_args is None:
             paging_args = {}
@@ -57,12 +62,12 @@ class Paging(object):
     @property
     def next(self):
         """ The next url """
-        return self.request.path_qs.replace_query('pageref',self._next_ref)
+        return self.base_path.replace_query('pageref',self._next_ref)
     
     @property
     def prev(self):
         """ The prev url """
-        return self.request.path_qs.replace_query('pageref',self._prev_ref)
+        return self.base_path.replace_query('pageref',self._prev_ref)
 
     @property
     def has_prev(self):
@@ -93,8 +98,8 @@ class Paging(object):
 
 class RangePaging(Paging):
 
-    def __init__(self, request, paging_args, pages_per_side=DEFAULT_PAGES_PER_SIDE):
-        Paging.__init__(self, request, paging_args)
+    def __init__(self, request, paging_args, pages_per_side=DEFAULT_PAGES_PER_SIDE, base_path=None):
+        Paging.__init__(self, request, paging_args, base_path=base_path)
         range_left = [] 
         range_right = [] 
         range_center = None
@@ -120,18 +125,18 @@ class RangePaging(Paging):
             # If it's the start or end position and that position
             # is within the page range then add the 'dots
             if is_start and is_within_range:
-                range_left.append( {'url': self.request.path.add_query('pageref',1), 'label': '...'} )
+                range_left.append( {'url': self.base_path.replace_query('pageref',1), 'label': '...'} )
                 continue
 
             if is_end and is_within_range:
-                range_right.append( {'url': self.request.path.add_query('pageref',self.total_pages), 'label': '...'} )
+                range_right.append( {'url': self.base_path.replace_query('pageref',self.total_pages), 'label': '...'} )
                 continue
 
             if is_within_range:
                 if position == 0:
                     range_center = {'label': page}
                     continue
-                range =  {'url': self.request.path.add_query('pageref',page), 'label': page}
+                range =  {'url': self.base_path.replace_query('pageref',page), 'label': page}
                 if position < 0:
                     range_left.append(range)
                 if position > 0:
