@@ -1,3 +1,6 @@
+import itertools
+
+
 class SkipLimitPager(object):
     """
     Generic efficient pager that simply calls a function, passing it item skip
@@ -29,5 +32,7 @@ class SkipLimitPager(object):
         if len(items) > pagesize:
             next = unicode(pagenum+1)
         # Return result tuple.
-        return {'prev': prev, 'items': items[:pagesize], 'next': next, 'stats': {'page_size': pagesize}}
+        # Cope with broken slice operators, e.g. xappy/xapian.
+        items = list(itertools.islice(items, pagesize))
+        return {'prev': prev, 'items': items, 'next': next, 'stats': {'page_size': pagesize}}
 
