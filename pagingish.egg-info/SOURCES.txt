@@ -1,9 +1,0 @@
-setup.cfg
-setup.py
-pagingish/__init__.py
-pagingish.egg-info/PKG-INFO
-pagingish.egg-info/SOURCES.txt
-pagingish.egg-info/dependency_links.txt
-pagingish.egg-info/entry_points.txt
-pagingish.egg-info/top_level.txt
-pagingish.egg-info/zip-safe

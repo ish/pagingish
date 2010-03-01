@@ -10,3 +10,4 @@ export.sh
 *.swp
 *.swo
 *.noseids
+*.egg-info
